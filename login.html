@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Iniciar sesión — Replay</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <main class="page">
+    <div class="container login-card">
+      <h1 class="login-title">Iniciar sesión</h1>
+      <p class="login-subtitle">Acceso seguro con correo y contraseña.</p>
+      <form id="login-form">
+        <div class="form-row">
+          <div class="col">
+            <label for="login-email">Correo</label>
+            <input id="login-email" class="input" type="email" autocomplete="email" placeholder="correo@dominio.com" required />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="col">
+            <label for="login-password">Contraseña</label>
+            <input id="login-password" class="input" type="password" autocomplete="current-password" placeholder="••••••••" required />
+          </div>
+        </div>
+        <div class="form-row">
+          <button class="btn" type="submit">Entrar</button>
+        </div>
+        <div id="login-error" class="login-error"></div>
+      </form>
+    </div>
+  </main>
+  <script src="../app.js"></script>
+</body>
+</html>

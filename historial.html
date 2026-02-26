@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Historial Mensual — Replay</title>
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body>
+  <main class="page">
+    <a href="../index.html" class="back-btn">← Volver</a>
+    <h2 class="title" style="font-size:32px;color:var(--pink);font-weight:700">📝 Registrar Nuevo Mes</h2>
+    <hr style="border:none;border-top:3px solid var(--pink);margin:16px 0 24px 0" />
+    
+    <div class="container">
+      <!-- Campo 1: Mes -->
+      <div class="history-card">
+        <label class="history-label">Mes *</label>
+        <input id="history-month" type="text" class="history-input" placeholder="Noviembre" />
+      </div>
+
+      <!-- Campo 2: Año -->
+      <div class="history-card">
+        <label class="history-label">Año *</label>
+        <input id="history-year" type="number" class="history-input" placeholder="2024" />
+      </div>
+
+      <!-- Campo 3: Información de Alumnos -->
+      <div class="history-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <label class="history-label" style="margin:0">Información de Alumnos Inscritos</label>
+          <label class="history-label-secondary">Pagos Recibidos</label>
+        </div>
+        <textarea id="history-students" class="history-textarea" rows="5" placeholder="Ej: 20 personas inscritas en todas las disciplinas. Total recaudado: $7,000. María se inscribió..."></textarea>
+      </div>
+
+      <!-- Campo 4: Información de Rentas -->
+      <div class="history-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <label class="history-label" style="margin:0">Información de Rentas</label>
+          <label class="history-label-secondary">Pagos Recibidos</label>
+        </div>
+        <textarea id="history-rentals" class="history-textarea" rows="5" placeholder="Ej: 3 personas rentaron espacios. Total recaudado: $6,000. María renta Lun-Mie 7–9pm..."></textarea>
+      </div>
+
+      <!-- Campo 5: Información de Quinceañeras y Montajes -->
+      <div class="history-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <label class="history-label" style="margin:0">Información de Quinceañeras y Montajes</label>
+          <label class="history-label-secondary">Pagos Recibidos</label>
+        </div>
+        <textarea id="history-montajes" class="history-textarea" rows="5" placeholder="Ej: 5 personas decidieron que les montásemos algo, 2 Quinceañeras y 3 Grupos. Total recaudado: $6,000. Elena quiere montajes de quince años..."></textarea>
+      </div>
+
+      <!-- Campo 6: Total de Pagos Recibidos -->
+      <div class="history-card">
+        <label class="history-label">Total de Pagos Recibidos *</label>
+        <input id="history-total-payments" type="text" class="history-input" placeholder="$45,000" />
+      </div>
+
+      <!-- Campo 7: Gastos del Mes -->
+      <div class="history-card">
+        <label class="history-label">💸 Gastos del Mes (Renta, servicios, etc.)</label>
+        <textarea id="history-expenses" class="history-textarea" rows="5" placeholder="Ej: Renta del espacio: $10,000. Servicios (luz, agua): $2,500. Mantenimiento: $1,000. Total gastado: $13,500"></textarea>
+      </div>
+
+      <!-- Campo 8: Pago de Maestros -->
+      <div class="history-card">
+        <label class="history-label">💰 Pago de Maestros</label>
+        <div style="margin-bottom:12px;text-align:right">
+          <button id="add-teacher-btn" class="btn">+ Agregar Maestro</button>
+        </div>
+        <div class="table-wrap">
+          <table class="table" id="teachers-table">
+            <thead>
+              <tr>
+                <th>Nombre del Maestro</th>
+                <th>Teléfono/Contacto</th>
+                <th>Disciplinas que Imparte</th>
+                <th>Pago Mensual</th>
+                <th>Adeudo Pendiente</th>
+                <th>Día de Pago</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="teachers-tbody">
+              <!-- rendered by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Campo 9: Notas Extras -->
+      <div class="history-card">
+        <label class="history-label">📝 Notas Extras</label>
+        <textarea id="history-notes-extra" class="history-textarea" rows="5" placeholder="Notas adicionales, observaciones importantes del mes, recordatorios..."></textarea>
+      </div>
+
+      <!-- Campo 10: Notas Adicionales -->
+      <div class="history-card">
+        <label class="history-label">Notas Adicionales</label>
+        <textarea id="history-notes-additional" class="history-textarea" rows="5" placeholder="Eventos especiales, cambios en el estudio, logros del mes..."></textarea>
+      </div>
+
+      <!-- Botón Guardar -->
+      <div style="margin-top:24px;text-align:center;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button id="generate-history-btn" class="btn btn-secondary">⚡ Generar Historial del Mes</button>
+        <button id="save-history-btn" class="history-save-btn">💾 Guardar Registro del Mes</button>
+      </div>
+
+      <hr style="margin:40px 0;border:none;border-top:2px solid rgba(0,0,0,0.1)" />
+
+      <!-- Lista de Registros Guardados -->
+      <h3 style="color:var(--pink);font-size:24px;font-weight:700;margin-bottom:16px">📅 Registros Mensuales Guardados</h3>
+      <div id="history-list">
+        <!-- rendered by JS -->
+      </div>
+    </div>
+  </main>
+  <script src="../app.js"></script>
+  <script>
+    if(typeof initHistoryPage === 'function') initHistoryPage();
+  </script>
+</body>
+</html>

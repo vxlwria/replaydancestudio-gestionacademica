@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Montajes / XV Años — Replay Dance Studio</title>
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="page-header">
+      <button class="back-btn back-btn-large" id="montajes-back">← Volver</button>
+      <h1 style="color:var(--pink);font-size:32px;margin:0">Montajes Coreográficos / XV Años</h1>
+    </header>
+
+    <div class="container">
+      <!-- Tabs -->
+      <div class="tabs-fixed" id="montajes-tabs" style="margin-bottom:20px">
+        <button class="tab active" data-type="xv">👑 XV Años</button>
+        <button class="tab" data-type="choreo">💃 Coreografías</button>
+      </div>
+
+      <!-- XV Años Section -->
+      <section id="xv-section">
+        <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+          <button id="add-xv-btn" class="btn">+ Agregar XV Años</button>
+          <button id="manage-packages-btn" class="btn btn-secondary">📦 Gestionar Paquetes</button>
+          <select id="xv-sort-by" class="input" style="width:180px">
+            <option value="package">Ordenar por Paquete</option>
+            <option value="name">Ordenar Alfabéticamente</option>
+          </select>
+          <input type="text" id="xv-search" class="input" placeholder="Buscar quinceañera..." style="flex:1;min-width:200px" />
+        </div>
+
+        <div class="table-wrap" style="margin-bottom:20px">
+          <table class="table" id="xv-table">
+            <thead>
+              <tr>
+                <th>Paquete</th>
+                <th>Quinceañera</th>
+                <th>Montajes</th>
+                <th>Teléfono</th>
+                <th>Monto</th>
+                <th style="width:100px">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="xv-tbody"></tbody>
+          </table>
+        </div>
+
+        <hr style="margin:30px 0" />
+
+        <!-- Mini Calendar -->
+        <h3 style="color:var(--pink)">📅 Calendario de XV Años</h3>
+        <div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap" class="calendar-controls">
+          <button id="xv-cal-prev" class="btn btn-secondary">◀</button>
+          <div id="xv-cal-display-month" style="font-weight:700;color:var(--pink)"></div>
+          <button id="xv-cal-next" class="btn btn-secondary">▶</button>
+          <button id="xv-cal-copy" class="btn btn-secondary" style="margin-left:auto;font-size:12px">📋 Copiar</button>
+          <button id="xv-cal-paste" class="btn btn-secondary" style="font-size:12px">📥 Pegar</button>
+          <button id="xv-cal-save" class="btn btn-secondary" style="font-size:12px">💾 Guardar</button>
+          <button id="xv-cal-delete" class="btn" style="background:#ff4444;font-size:12px">🗑️ Limpiar</button>
+        </div>
+        <div id="xv-mini-calendar" class="calendar-grid"></div>
+
+        <hr style="margin:30px 0" />
+
+        <!-- Notas -->
+        <h3 style="color:var(--pink)">Recordatorios y Notas</h3>
+        <textarea id="xv-notes" class="input" style="min-height:100px;width:100%" placeholder="Notas generales sobre XV años..."></textarea>
+        <button id="save-xv-notes-btn" class="btn" style="margin-top:8px">Guardar notas</button>
+
+        <hr style="margin:30px 0" />
+
+        <!-- Pagos del Mes XV -->
+        <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap">
+          <h3 style="color:var(--pink);margin-top:0">Pagos del Mes</h3>
+          <div style="font-weight:700;color:var(--muted);font-size:13px">Mes: <span id="xv-payments-month-label" style="color:var(--pink)">—</span></div>
+        </div>
+        <div class="table-wrap" style="margin-top:10px">
+          <table class="table" id="xv-payments-table" aria-label="Pagos del mes">
+            <thead>
+              <tr><th>Fecha</th><th>Quinceañera</th><th>Monto</th><th>%</th><th>Pagó</th></tr>
+            </thead>
+            <tbody id="xv-payments-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Coreografías Section -->
+      <section id="choreo-section" style="display:none">
+        <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+          <button id="add-choreo-btn" class="btn">+ Agregar Coreografía</button>
+          <input type="text" id="choreo-search" class="input" placeholder="Buscar por nombre..." style="flex:1;min-width:200px" />
+        </div>
+
+        <div class="table-wrap" style="margin-bottom:20px">
+          <table class="table" id="choreo-table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Grupo/Escuela</th>
+                <th>Teléfono</th>
+                <th>Montajes</th>
+                <th>Monto</th>
+                <th style="width:100px">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="choreo-tbody"></tbody>
+          </table>
+        </div>
+
+        <hr style="margin:30px 0" />
+
+        <!-- Choreo Calendar -->
+        <h3 style="color:var(--pink)">📅 Calendario de Coreografías</h3>
+        <div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap" class="calendar-controls">
+          <button id="choreo-cal-prev" class="btn btn-secondary">◀</button>
+          <div id="choreo-cal-display-month" style="font-weight:700;color:var(--pink)"></div>
+          <button id="choreo-cal-next" class="btn btn-secondary">▶</button>
+          <button id="choreo-cal-copy" class="btn btn-secondary" style="margin-left:auto;font-size:12px">📋 Copiar</button>
+          <button id="choreo-cal-paste" class="btn btn-secondary" style="font-size:12px">📥 Pegar</button>
+          <button id="choreo-cal-save" class="btn btn-secondary" style="font-size:12px">💾 Guardar</button>
+          <button id="choreo-cal-delete" class="btn" style="background:#ff4444;font-size:12px">🗑️ Limpiar</button>
+        </div>
+        <div id="choreo-mini-calendar" class="calendar-grid"></div>
+
+        <hr style="margin:30px 0" />
+
+        <!-- Choreo Notas -->
+        <h3 style="color:var(--pink)">Recordatorios y Notas</h3>
+        <textarea id="choreo-notes" class="input" style="min-height:100px;width:100%" placeholder="Notas generales sobre coreografías..."></textarea>
+        <button id="save-choreo-notes-btn" class="btn" style="margin-top:8px">Guardar notas</button>
+
+        <hr style="margin:30px 0" />
+
+        <!-- Pagos del Mes Coreografías -->
+        <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap">
+          <h3 style="color:var(--pink);margin-top:0">Pagos del Mes</h3>
+          <div style="font-weight:700;color:var(--muted);font-size:13px">Mes: <span id="choreo-payments-month-label" style="color:var(--pink)">—</span></div>
+        </div>
+        <div class="table-wrap" style="margin-top:10px">
+          <table class="table" id="choreo-payments-table" aria-label="Pagos del mes">
+            <thead>
+              <tr><th>Fecha</th><th>Nombre</th><th>Monto</th><th>%</th><th>Pagó</th></tr>
+            </thead>
+            <tbody id="choreo-payments-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <script src="../app.js"></script>
+  </div>
+</body>
+</html>

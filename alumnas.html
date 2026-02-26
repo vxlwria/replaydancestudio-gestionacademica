@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Lista de Alumnas — Replay</title>
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body>
+  <main class="page">
+    <a href="../index.html" class="back-btn">← Volver</a>
+    <h2 class="title" style="font-size:28px;color:var(--pink);">Lista de Alumnas / Pagos</h2>
+
+    <div class="container">
+      <div class="tabs" id="type-tabs">
+        <div class="tab active" data-type="">Todos los alumnos</div>
+        <div class="tab" data-type="Inscrito">Alumnos Inscritos</div>
+        <div class="tab" data-type="Clase Muestra">Clase Muestra</div>
+        <div class="tab" data-type="Clase Suelta">Clase Suelta</div>
+      </div>
+
+      <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <label style="font-weight:700">Filtrar por disciplina:</label>
+        <select id="discipline-filter" class="input" style="min-width:180px">
+          <option value="">Todas las disciplinas</option>
+        </select>
+        <button id="edit-disciplines-btn" class="btn" style="margin-left:auto">Editar disciplinas</button>
+      </div>
+
+      <div style="margin-top:10px;margin-bottom:10px">
+        <label style="font-weight:700">Buscar alumna por nombre</label>
+        <input id="search-input" class="input" placeholder="Escribe nombre para buscar..." />
+      </div>
+
+      <div style="margin-bottom:14px;margin-top:10px;text-align:right">
+        <button id="add-student-btn" class="btn">✨ Agregar Alumna</button>
+      </div>
+
+      <table class="table" aria-describedby="tabla-alumnas">
+        <thead>
+          <tr><th>Tipo</th><th>Nombre</th><th>Disciplinas</th><th>Horario</th><th>Monto</th><th>Pago</th><th>Eliminar</th></tr>
+        </thead>
+        <tbody id="alumnas-tbody">
+          <!-- renderizado por JS -->
+        </tbody>
+      </table>
+
+      <div style="margin-top:14px;display:flex;flex-direction:column;gap:12px;flex-wrap:wrap">
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <div class="small-block calendar-wrap" style="flex:1;min-width:320px">
+          <div class="calendar-controls">
+            <button id="cal-prev" class="btn btn-secondary">◀</button>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="font-weight:700;color:var(--pink)" id="cal-display-month">Noviembre 2025</div>
+            </div>
+            <button id="cal-next" class="btn btn-secondary">▶</button>
+            <button id="cal-copy" class="btn btn-secondary" style="margin-left:auto;font-size:12px">📋 Copiar</button>
+            <button id="cal-paste" class="btn btn-secondary" style="font-size:12px">📥 Pegar</button>
+            <button id="cal-save" class="btn btn-secondary" style="font-size:12px">💾 Guardar</button>
+            <button id="cal-delete" class="btn" style="background:#ff4444;font-size:12px">🗑️ Limpiar</button>
+          </div>
+
+          <div id="mini-calendar" class="calendar-grid" aria-label="Calendario mensual">
+            <!-- cells rendered by JS --></div>
+        </div>
+
+        <div class="small-block" style="width:100%">
+          <h3 style="margin-top:0;color:var(--pink);font-size:16px">Recordatorios y Notas</h3>
+          <textarea id="reminders-textarea" class="input" placeholder="Añade recordatorios o notas generales..." style="min-height:160px;resize:vertical"></textarea>
+          <div style="text-align:right;margin-top:8px"><button id="save-reminders-btn" class="btn">Guardar notas</button></div>
+        </div>
+        <div class="small-block" style="width:100%">
+          <div style="display:flex;align-items:center;gap:8px;justify-content:space-between">
+            <h3 style="margin:0;color:var(--pink);font-size:16px">Pagos del Mes</h3>
+            <div style="font-weight:700;color:var(--muted);font-size:13px">Mes: <span id="payments-month-label" style="color:var(--pink)">—</span></div>
+          </div>
+          <div class="table-wrap" style="margin-top:10px">
+            <table id="payments-month-table" class="table" aria-label="Pagos del mes">
+              <thead>
+                <tr><th>Fecha</th><th>Alumna</th><th>Disciplinas</th><th>Monto</th><th>Pagó</th></tr>
+              </thead>
+              <tbody id="payments-month-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="../app.js"></script>
+</body>
+</html>

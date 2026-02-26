@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Gestión de Rentas — Replay Dance Studio</title>
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    /* Estilos para la tabla de horarios (igual que calendario) */
+    .rental-section {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 32px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    .schedule-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .schedule-table th {
+      background: #ED468F;
+      color: white;
+      padding: 12px 8px;
+      font-weight: 700;
+      font-size: 14px;
+      border: 1px solid rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .schedule-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      min-height: 60px;
+      max-width: 160px;
+      vertical-align: top;
+      font-size: 13px;
+    }
+    .schedule-table td.hour-cell {
+      font-weight: 700;
+      text-align: center;
+      background: rgba(237,70,143,0.05);
+      color: #ED468F;
+      width: 100px;
+    }
+    .schedule-item-box {
+      margin-bottom: 4px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      position: relative;
+      cursor: pointer;
+      border-left: 3px solid;
+      width: 130px;
+      min-height: 45px;
+      max-height: 70px;
+      display: block;
+      box-sizing: border-box;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .schedule-item-box:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .schedule-item-box .title {
+      font-size: 11px;
+      line-height: 1.2;
+      font-weight: 700;
+    }
+    .schedule-item-box .person {
+      font-size: 9px;
+      opacity: 0.8;
+    }
+    .schedule-item-box .time {
+      font-size: 9px;
+      font-weight: 600;
+      margin-top: 2px;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="page-header">
+      <button class="back-btn back-btn-large" id="rentas-back">← Volver</button>
+      <h1 style="color:var(--pink);font-size:32px;margin:0">Gestión de Rentas</h1>
+    </header>
+
+    <div class="container">
+      <section class="rental-section">
+        <h3 style="color:var(--pink);margin-top:0">⏰ Horario Semanal de Rentas</h3>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px;padding-bottom:12px;border-bottom:2px solid #FFD6E8">
+          <div style="display:flex;gap:8px;align-items:center">
+            <button id="rental-prev-month" class="btn btn-secondary" style="width:40px;height:40px;padding:0">←</button>
+            <input type="month" id="rental-month" class="input" style="padding:8px 12px;border:1px solid #FFD6E8;border-radius:6px" />
+            <button id="rental-next-month" class="btn btn-secondary" style="width:40px;height:40px;padding:0">→</button>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button id="rental-schedule-copy" class="btn btn-secondary">📋 Copiar</button>
+            <button id="rental-schedule-paste" class="btn btn-secondary">📥 Pegar</button>
+            <button id="rental-schedule-save" class="btn btn-secondary">💾 Guardar</button>
+          </div>
+          <button id="add-rental-schedule-btn" class="btn">+ Agregar Horario</button>
+        </div>
+
+        <div style="overflow-x:auto">
+          <table class="schedule-table" id="rental-schedule-table">
+            <thead>
+              <tr>
+                <th>Hora</th>
+                <th>Lunes</th>
+                <th>Martes</th>
+                <th>Miércoles</th>
+                <th>Jueves</th>
+                <th>Viernes</th>
+                <th>Sábado</th>
+                <th>Domingo</th>
+              </tr>
+            </thead>
+            <tbody id="rental-schedule-tbody">
+              <!-- Filas generadas por JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <hr style="margin:20px 0" />
+
+      <section class="rental-section">
+        <h3 style="color:var(--pink);margin-top:0">👥 Personas que Rentan</h3>
+        <div style="margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <button id="add-rental-person-btn" class="btn">+ Agregar Persona</button>
+          <button id="copy-schedules-btn" class="btn btn-secondary">Copiar Horarios</button>
+          <button id="paste-schedules-btn" class="btn btn-secondary">Pegar Horarios</button>
+          <input type="text" id="rental-people-search" class="input" placeholder="Buscar por nombre..." style="flex:1;min-width:200px" />
+        </div>
+
+        <div class="table-wrap" id="rental-people-wrap">
+          <table class="table" id="rental-people-table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Grupo/Academia</th>
+                <th>Teléfono</th>
+                <th>Horarios</th>
+                <th>Monto</th>
+                <th style="width:100px">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="rental-people-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <hr style="margin:20px 0" />
+
+      <section class="rental-section">
+        <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap">
+          <h3 style="color:var(--pink);margin-top:0">Pagos del Mes</h3>
+          <div style="font-weight:700;color:var(--muted);font-size:13px">Mes: <span id="rental-payments-month-label" style="color:var(--pink)">—</span></div>
+        </div>
+        <div class="table-wrap" style="margin-top:10px">
+          <table class="table" id="rental-payments-table" aria-label="Pagos del mes">
+            <thead>
+              <tr><th>Fecha</th><th>Persona</th><th>Monto</th><th>Pagó</th><th>Nota</th></tr>
+            </thead>
+            <tbody id="rental-payments-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <hr style="margin:20px 0" />
+
+      <section class="rental-section">
+        <h3 style="color:var(--pink);margin-top:0">📝 Notas y Recordatorios</h3>
+        <textarea id="rental-notes" class="input" style="min-height:120px;width:100%" placeholder="Anotaciones sobre rentas..."></textarea>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <button id="save-notes-btn" class="btn">Guardar Notas</button>
+          <button id="rental-clear-expenses-btn" class="btn" style="background:#ff4444">Borrar datos antiguos de gastos</button>
+        </div>
+      </section>
+    </div>
+
+    <script src="../app.js"></script>
+  </div>
+</body>
+</html>
