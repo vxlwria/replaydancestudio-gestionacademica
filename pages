@@ -1,108 +1,959 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Replay Dance Studio</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <h1 class="title">Replay Dance Studio</h1>
+      <p class="subtitle">Academia especializada en K-pop, Ballet, Jazz, Heels, Baile Moderno y Gimnasia. ¡Consulta listas de alumnas, calendario de actividades y renta de espacios!</p>
+    </header>
+
+    <section class="grid">
+      <a class="card" href="pages/alumnas.html">
+        <div class="card-emoji">📋</div>
+        <div class="card-text">LISTA DE ALUMNOS / PAGO DE MENSUALIDADES</div>
+        <p class="card-desc">Registro de alumnas, pagos mensuales y ficha personal.</p>
+      </a>
+
+      <a class="card" href="pages/asistencia.html">
+        <div class="card-emoji">✅</div>
+        <div class="card-text">LISTA DE ASISTENCIA</div>
+        <p class="card-desc">Control de asistencia por disciplina y fechas.</p>
+      </a>
+
+      <a class="card" href="pages/rentas.html">
+        <div class="card-emoji">🏢</div>
+        <div class="card-text">RENTAS</div>
+        <p class="card-desc">Gestión de horarios de renta y pagos.</p>
+      </a>
+
+      <a class="card" href="pages/montajes.html">
+        <div class="card-emoji">💃</div>
+        <div class="card-text">MONTAJES COREOGRÁFICOS / XV AÑOS</div>
+        <p class="card-desc">Seguimiento de proyectos, pagos y calendarios.</p>
+      </a>
+
+      <a class="card" href="pages/calendario.html">
+        <div class="card-emoji">🗓️</div>
+        <div class="card-text">CALENDARIO</div>
+        <p class="card-desc">Calendario central con todos los eventos sincronizados.</p>
+      </a>
+
+      <a class="card" href="pages/historial.html">
+        <div class="card-emoji">📊</div>
+        <div class="card-text">HISTORIAL MENSUAL</div>
+        <p class="card-desc">Registrar y consultar resúmenes mensuales.</p>
+      </a>
+
+      <a class="card" href="pages/respaldo.html">
+        <div class="card-emoji">💾</div>
+        <div class="card-text">RESPALDO DE DATOS</div>
+        <p class="card-desc">Registro de acciones y exportación de respaldo.</p>
+      </a>
+
+      <a class="card" href="pages/exportar.html">
+        <div class="card-emoji">📤</div>
+        <div class="card-text">EXPORTAR A EXCEL</div>
+        <p class="card-desc">Exporta CSV con datos actualizados al momento.</p>
+      </a>
+    </section>
+
+    <footer class="footer">© Replay Dance Studio</footer>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
 
 <!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Respaldo de Datos — Replay</title>
+  <title>Lista de Alumnas — Replay</title>
   <link rel="stylesheet" href="../styles.css" />
 </head>
 <body>
   <main class="page">
     <a href="../index.html" class="back-btn">← Volver</a>
-    
-    <!-- Encabezado Principal -->
-    <div style="margin-bottom:24px">
-      <h2 class="title" style="font-size:32px;color:var(--pink);font-weight:700;display:flex;align-items:center;gap:12px">
-        💾 Información Guardada
-      </h2>
-      <hr style="border:none;border-top:3px solid var(--pink);margin:16px 0" />
-      <p style="color:var(--muted);font-size:14px;margin-top:12px">
-        Aquí puedes ver toda la información que has guardado. Esta información se sincroniza automáticamente con tu hoja de excel.
-      </p>
+    <h2 class="title" style="font-size:28px;color:var(--pink);">Lista de Alumnas / Pagos</h2>
+
+    <div class="container">
+      <div class="tabs" id="type-tabs">
+        <div class="tab active" data-type="">Todos los alumnos</div>
+        <div class="tab" data-type="Inscrito">Alumnos Inscritos</div>
+        <div class="tab" data-type="Clase Muestra">Clase Muestra</div>
+        <div class="tab" data-type="Clase Suelta">Clase Suelta</div>
+      </div>
+
+      <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <label style="font-weight:700">Filtrar por disciplina:</label>
+        <select id="discipline-filter" class="input" style="min-width:180px">
+          <option value="">Todas las disciplinas</option>
+        </select>
+        <button id="edit-disciplines-btn" class="btn" style="margin-left:auto">Editar disciplinas</button>
+      </div>
+
+      <div style="margin-top:10px;margin-bottom:10px">
+        <label style="font-weight:700">Buscar alumna por nombre</label>
+        <input id="search-input" class="input" placeholder="Escribe nombre para buscar..." />
+      </div>
+
+      <div style="margin-bottom:14px;margin-top:10px;text-align:right">
+        <button id="add-student-btn" class="btn">✨ Agregar Alumna</button>
+      </div>
+
+      <table class="table" aria-describedby="tabla-alumnas">
+        <thead>
+          <tr><th>Tipo</th><th>Nombre</th><th>Disciplinas</th><th>Horario</th><th>Monto</th><th>Pago</th><th>Eliminar</th></tr>
+        </thead>
+        <tbody id="alumnas-tbody">
+          <!-- renderizado por JS -->
+        </tbody>
+      </table>
+
+      <div style="margin-top:14px;display:flex;flex-direction:column;gap:12px;flex-wrap:wrap">
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <div class="small-block calendar-wrap" style="flex:1;min-width:320px">
+          <div class="calendar-controls">
+            <button id="cal-prev" class="btn btn-secondary">◀</button>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="font-weight:700;color:var(--pink)" id="cal-display-month">Noviembre 2025</div>
+            </div>
+            <button id="cal-next" class="btn btn-secondary">▶</button>
+            <button id="cal-copy" class="btn btn-secondary" style="margin-left:auto;font-size:12px">📋 Copiar</button>
+            <button id="cal-paste" class="btn btn-secondary" style="font-size:12px">📥 Pegar</button>
+            <button id="cal-save" class="btn btn-secondary" style="font-size:12px">💾 Guardar</button>
+            <button id="cal-delete" class="btn" style="background:#ff4444;font-size:12px">🗑️ Limpiar</button>
+          </div>
+
+          <div id="mini-calendar" class="calendar-grid" aria-label="Calendario mensual">
+            <!-- cells rendered by JS --></div>
+        </div>
+
+        <div class="small-block" style="width:100%">
+          <h3 style="margin-top:0;color:var(--pink);font-size:16px">Recordatorios y Notas</h3>
+          <textarea id="reminders-textarea" class="input" placeholder="Añade recordatorios o notas generales..." style="min-height:160px;resize:vertical"></textarea>
+          <div style="text-align:right;margin-top:8px"><button id="save-reminders-btn" class="btn">Guardar notas</button></div>
+        </div>
+        <div class="small-block" style="width:100%">
+          <div style="display:flex;align-items:center;gap:8px;justify-content:space-between">
+            <h3 style="margin:0;color:var(--pink);font-size:16px">Pagos del Mes</h3>
+            <div style="font-weight:700;color:var(--muted);font-size:13px">Mes: <span id="payments-month-label" style="color:var(--pink)">—</span></div>
+          </div>
+          <div class="table-wrap" style="margin-top:10px">
+            <table id="payments-month-table" class="table" aria-label="Pagos del mes">
+              <thead>
+                <tr><th>Fecha</th><th>Alumna</th><th>Disciplinas</th><th>Monto</th><th>Pagó</th></tr>
+              </thead>
+              <tbody id="payments-month-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
+  </main>
+  <script src="../app.js"></script>
+</body>
+</html>
+
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Lista de Asistencia — Replay</title>
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body>
+  <main class="page">
+    <a href="../index.html" class="back-btn">← Volver</a>
+    <h2 class="title" style="font-size:28px;color:var(--pink);">Lista de Asistencia</h2>
+    <div class="container">
+      <div class="tabs-fixed" id="discipline-tabs" aria-label="Pestañas de disciplinas">
+        <!-- JS will render tabs here (fixed height, no expansion) -->
+      </div>
+
+      <p class="card-desc">Cada fecha es un registro independiente. Todas las asistencias se guardan por fecha y disciplina.</p>
+
+      <div class="small-block" style="width:100%">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <div style="display:flex;gap:6px;align-items:center">
+              <button id="attendance-prev-day" class="btn btn-secondary" style="width:36px;height:36px;padding:0">◀</button>
+              <div id="attendance-day-label" style="font-weight:700;color:var(--pink)">2026-02-18</div>
+              <button id="attendance-next-day" class="btn btn-secondary" style="width:36px;height:36px;padding:0">▶</button>
+            </div>
+            <input type="date" id="attendance-date" class="input" style="display:none" />
+            <input id="attendance-search" class="input" placeholder="Buscar por nombre..." />
+            <button id="attendance-save" class="btn">Guardar</button>
+            <button id="attendance-history" class="btn btn-secondary">Historial Mes</button>
+          </div>
+        </div>
+
+        <section class="attendance-table-wrap table-wrap" id="attendance-table-wrap">
+          <table class="table" id="attendance-table">
+            <thead>
+              <tr><th>Nombre</th><th>Disciplina</th><th style="width:130px">Asistencia</th><th style="width:200px">Notas</th></tr>
+            </thead>
+            <tbody id="attendance-tbody"></tbody>
+          </table>
+        </section>
+      </div>
+
+    </div>
+  </main>
+  <script src="../app.js"></script>
+</body>
+</html>
+
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Calendario — Replay</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    .schedule-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .schedule-table th {
+      background: #ED468F;
+      color: white;
+      padding: 12px 8px;
+      font-weight: 700;
+      font-size: 14px;
+      border: 1px solid rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .schedule-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      min-height: 60px;
+      max-width: 160px;
+      vertical-align: top;
+      font-size: 13px;
+    }
+    .schedule-table td.hour-cell {
+      font-weight: 700;
+      text-align: center;
+      background: rgba(237,70,143,0.05);
+      color: #ED468F;
+      width: 80px;
+    }
+    .schedule-item-box {
+      margin-bottom: 4px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      position: relative;
+      cursor: pointer;
+      border-left: 3px solid;
+      width: 130px;
+      min-height: 45px;
+      max-height: 70px;
+      display: block;
+      box-sizing: border-box;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .schedule-item-box:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .schedule-item-box .title {
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+    .schedule-item-box .person {
+      font-size: 9px;
+      color: #666;
+    }
+    .schedule-item-box .title {
+      font-size: 11px;
+      line-height: 1.2;
+    }
+    .schedule-item-box .time-range {
+      font-size: 9px;
+      font-weight: 600;
+      margin-top: 2px;
+      color: rgba(0,0,0,0.7);
+    }
+    .schedule-item-box .delete-btn {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      background: rgba(255,255,255,0.9);
+      border: none;
+      color: #ff4444;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 3px;
+      display: none;
+    }
+    .schedule-item-box:hover .delete-btn {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <a href="../index.html" class="back-btn">← Volver</a>
+    <h2 class="title" style="font-size:28px;color:var(--pink);">📅 Horario Semanal</h2>
+
+    <div class="container">
+      <div style="text-align:right;margin-bottom:16px">
+        <button id="add-schedule-btn" class="btn">+ Agregar Horario</button>
+      </div>
+
+      <div style="overflow-x:auto">
+        <table class="schedule-table" id="schedule-table">
+          <thead>
+            <tr>
+              <th>Hora</th>
+              <th>Lunes</th>
+              <th>Martes</th>
+              <th>Miércoles</th>
+              <th>Jueves</th>
+              <th>Viernes</th>
+              <th>Sábado</th>
+              <th>Domingo</th>
+            </tr>
+          </thead>
+          <tbody id="schedule-tbody">
+            <!-- Filas generadas por JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script src="../app.js"></script>
+  <script>
+    if(typeof initSimpleCalendarioPage === 'function') initSimpleCalendarioPage();
+  </script>
+</body>
+</html>
+
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Calendario — Replay</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    .cal-section {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 32px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    .cal-section h3 {
+      margin: 0 0 20px 0;
+      color: #ED468F;
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* HORARIO SEMANAL */
+    .schedule-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .schedule-table th {
+      background: #ED468F;
+      color: white;
+      padding: 12px 8px;
+      font-weight: 700;
+      font-size: 14px;
+      border: 1px solid rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .schedule-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      min-height: 60px;
+      max-width: 160px;
+      vertical-align: top;
+      font-size: 13px;
+    }
+    .schedule-table td.hour-cell {
+      font-weight: 700;
+      text-align: center;
+      background: rgba(237,70,143,0.05);
+      color: #ED468F;
+      width: 100px;
+    }
+    .schedule-item-box {
+      margin-bottom: 4px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      position: relative;
+      cursor: pointer;
+      border-left: 3px solid;
+      width: 130px;
+      min-height: 45px;
+      max-height: 70px;
+      display: block;
+      box-sizing: border-box;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .schedule-item-box:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .schedule-item-box .title {
+      font-size: 11px;
+      line-height: 1.2;
+      font-weight: 700;
+    }
+    .schedule-item-box .person {
+      font-size: 9px;
+      opacity: 0.8;
+    }
+    .schedule-item-box .time-range {
+      font-size: 9px;
+      font-weight: 600;
+      margin-top: 2px;
+      opacity: 0.9;
+    }
+    .schedule-item-box .delete-btn {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      background: rgba(255,255,255,0.9);
+      border: none;
+      color: #ff4444;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 3px;
+      display: none;
+    }
+    .schedule-item-box:hover .delete-btn {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <a href="../index.html" class="back-btn">← Volver</a>
+    <h2 class="title" style="font-size:28px;color:var(--pink);">📅 Calendario & Horarios</h2>
+
+    <div class="container">
+      <!-- CALENDARIO MENSUAL -->
+      <div class="small-block calendar-wrap" style="flex:1;min-width:320px">
+        <div class="calendar-controls">
+          <button id="cal-prev-month" class="btn btn-secondary" title="Mes anterior">◀</button>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="font-weight:700;color:var(--pink)" id="cal-month-title">Diciembre 2025</div>
+          </div>
+          <button id="cal-next-month" class="btn btn-secondary" title="Mes siguiente">▶</button>
+          <button id="cal-copy" class="btn btn-secondary" style="margin-left:auto;font-size:12px" title="Copiar datos del calendario">📋 Copiar</button>
+          <button id="cal-paste" class="btn btn-secondary" style="font-size:12px" title="Pegar datos del portapapeles">📥 Pegar</button>
+          <button id="cal-save" class="btn btn-secondary" style="font-size:12px" title="Guardar calendario">💾 Guardar</button>
+          <button id="cal-clear" class="btn" style="background:#ff4444;font-size:12px" title="Limpiar mes actual">🗑️ Limpiar</button>
+        </div>
+
+        <div class="calendar-grid" id="calendar-grid">
+          <!-- Generado por JS -->
+        </div>
+      </div>
+
+      <!-- NOTAS Y RECORDATORIOS -->
+      <div class="small-block calendar-wrap" style="flex:1;min-width:320px">
+        <h3 style="margin-top:0">Recordatorios y Notas</h3>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button id="reminders-save" class="btn btn-secondary" style="font-size:12px">💾 Guardar notas</button>
+          <button id="reminders-clear" class="btn" style="background:#ff4444;font-size:12px">🗑️ Limpiar notas</button>
+        </div>
+        <textarea id="reminders-text" placeholder="Añade recordatorios o notas generales..." style="width:100%;min-height:120px;padding:12px;background:linear-gradient(135deg,rgba(237,70,143,0.05) 0%,rgba(139,61,137,0.05) 100%);border:2px solid #ED468F;border-radius:8px;font-family:Poppins,sans-serif;font-size:14px;resize:vertical;box-sizing:border-box"></textarea>
+      </div>
+
+      <!-- HORARIO SEMANAL -->
+      <div class="cal-section" style="width:100%">
+        <h3 style="margin-top:0">⏰ Horario Semanal</h3>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+          <div style="display:flex;gap:8px">
+            <button id="schedule-copy" class="btn btn-secondary" style="font-size:12px">📋 Copiar</button>
+            <button id="schedule-paste" class="btn btn-secondary" style="font-size:12px">📥 Pegar</button>
+            <button id="schedule-save" class="btn btn-secondary" style="font-size:12px">💾 Guardar</button>
+          </div>
+          <button id="add-schedule-btn" class="btn">+ Agregar Horario</button>
+        </div>
+
+        <div style="overflow-x:auto">
+          <table class="schedule-table" id="schedule-table">
+            <thead>
+              <tr>
+                <th>Hora</th>
+                <th>Lunes</th>
+                <th>Martes</th>
+                <th>Miércoles</th>
+                <th>Jueves</th>
+                <th>Viernes</th>
+                <th>Sábado</th>
+                <th>Domingo</th>
+              </tr>
+            </thead>
+            <tbody id="schedule-tbody">
+              <!-- Filas generadas por JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../app.js"></script>
+  <script>
+    if(typeof initFullCalendarioPage === 'function'){
+      initFullCalendarioPage();
+    }
+  </script>
+</body>
+</html>
+
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Exportar — Replay</title>
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body>
+  <main class="page">
+    <a href="../index.html" class="back-btn">← Volver</a>
+    <h2 class="title" style="font-size:32px;color:var(--pink);font-weight:700">Exportar a Excel</h2>
+    <div class="container">
+      <div class="small-block" style="margin-bottom:16px">
+        <h3 style="color:var(--pink);font-size:18px;margin:0 0 10px 0">🎯 Exportación segmentada</h3>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <label style="font-weight:700;color:var(--muted)">Mes:</label>
+          <select id="export-month" class="input" style="max-width:160px"></select>
+          <select id="export-year" class="input" style="max-width:120px"></select>
+          <label style="font-weight:700;color:var(--muted)">Disciplina:</label>
+          <select id="export-discipline" class="input" style="min-width:200px"></select>
+          <button id="btn-export-students-filtered" class="btn btn-secondary">Exportar Alumnas (filtrado)</button>
+          <button id="btn-export-attendance-filtered" class="btn btn-secondary">Exportar Asistencia (filtrado)</button>
+        </div>
+      </div>
+      <div class="export-grid">
+        <!-- 1. Alumnas -->
+        <div class="small-block export-card">
+          <h3 style="color:var(--cyan);font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px">📋 Exportar Lista Completa de Alumnas</h3>
+          <p class="card-desc" style="text-align:left">Descarga un archivo Excel con nombres, disciplinas, horarios, montos, contactos, pagos, notas, adeudos, recordatorios y fechas importantes.</p>
+          <div style="text-align:right;margin-top:8px">
+            <button id="btn-export-students" class="btn-cyan">📧 Descargar Alumnas (.xlsx)</button>
+          </div>
+        </div>
+
+        <!-- 2. Asistencia -->
+        <div class="small-block export-card">
+          <h3 style="color:var(--cyan);font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px">✅ Exportar Lista de Asistencia</h3>
+          <p class="card-desc" style="text-align:left">Descarga un Excel con todos los registros de asistencia por fecha y disciplina.</p>
+          <div style="text-align:right;margin-top:8px">
+            <button id="btn-export-attendance" class="btn-cyan">📧 Descargar Asistencia (.xlsx)</button>
+          </div>
+        </div>
+
+        <!-- 3. Rentas -->
+        <div class="small-block export-card">
+          <h3 style="color:var(--cyan);font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px">🏢 Exportar Rentas</h3>
+          <p class="card-desc" style="text-align:left">Incluye lista de personas que rentan, horarios semanales, gastos y notas de rentas.</p>
+          <div style="text-align:right;margin-top:8px">
+            <button id="btn-export-rentals" class="btn-cyan">📧 Descargar Rentas (.xlsx)</button>
+          </div>
+        </div>
+
+        <!-- 4. Montajes Coreográficos / XV -->
+        <div class="small-block export-card">
+          <h3 style="color:var(--cyan);font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px">🗓️ Exportar Montajes Coreográficos/Xv años</h3>
+          <p class="card-desc" style="text-align:left">Descarga un Excel con toda la información de XV Años y Coreografías: nombres, paquetes, montajes, coreografías, canciones, chambelanes, horarios, teléfonos, montos, división de pagos, fechas de pago, asistencia, notas, adeudos, calendarios y recordatorios.</p>
+          <div style="text-align:right;margin-top:8px">
+            <button id="btn-export-montajes" class="btn-cyan">📧 Descargar Montajes Coreográficos/Xv años (.xlsx)</button>
+          </div>
+        </div>
+
+        <!-- 5. Calendarios -->
+        <div class="small-block export-card">
+          <h3 style="color:var(--cyan);font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px">📅 Exportar Calendarios</h3>
+          <p class="card-desc" style="text-align:left">Descarga un Excel con todos los calendarios creados y sus actividades.</p>
+          <div style="text-align:right;margin-top:8px">
+            <button id="btn-export-calendars" class="btn-cyan">📧 Descargar Calendarios (.xlsx)</button>
+          </div>
+        </div>
+
+        <!-- 6. Historial Mensual -->
+        <div class="small-block export-card">
+          <h3 style="color:var(--cyan);font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px">📈 Exportar Historial Mensual</h3>
+          <p class="card-desc" style="text-align:left">Descarga un Excel con los registros mensuales: alumnas inscritas, pagos, rentas, gastos, maestros y notas.</p>
+          <div style="text-align:right;margin-top:8px">
+            <button id="btn-export-history" class="btn-cyan">📧 Descargar Historial (.xlsx)</button>
+          </div>
+        </div>
+
+        <!-- 7. Respaldo Completo (CSV unificado) -->
+        <div class="small-block export-card">
+          <h3 style="color:var(--cyan);font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px">💾 Exportar Respaldo Completo</h3>
+          <p class="card-desc" style="text-align:left">Descarga un archivo Excel con TODA tu información: alumnas, asistencia, rentas, calendarios, horarios semanales, XV años, coreografías e historial mensual.</p>
+          <div style="text-align:right;margin-top:8px">
+            <button id="btn-export-all" class="btn-cyan">📧 Descargar Todo (.xlsx)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="../app.js"></script>
+</body>
+</html>
+
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Historial Mensual — Replay</title>
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body>
+  <main class="page">
+    <a href="../index.html" class="back-btn">← Volver</a>
+    <h2 class="title" style="font-size:32px;color:var(--pink);font-weight:700">📝 Registrar Nuevo Mes</h2>
+    <hr style="border:none;border-top:3px solid var(--pink);margin:16px 0 24px 0" />
     
     <div class="container">
-      <div class="small-block" style="margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <button id="backup-export-btn" class="btn">💾 Exportar respaldo</button>
-        <button id="backup-import-btn" class="btn btn-secondary">📥 Importar respaldo</button>
-        <input type="file" id="backup-import-file" accept="application/json" style="display:none" />
-        <span style="color:var(--muted);font-size:13px">Exporta o importa todo en un clic.</span>
+      <!-- Campo 1: Mes -->
+      <div class="history-card">
+        <label class="history-label">Mes *</label>
+        <input id="history-month" type="text" class="history-input" placeholder="Noviembre" />
       </div>
-      <!-- Sección de Estadísticas -->
-      <div style="background:#F8F8F8;padding:24px;border-radius:12px;margin-bottom:24px">
-        <h3 style="color:var(--pink);font-size:20px;font-weight:700;margin:0 0 20px 0;display:flex;align-items:center;gap:8px">
-          📊 Estadísticas
-        </h3>
 
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
-          <label style="font-weight:700;color:var(--muted)">Mes:</label>
-          <select id="stats-month" class="input" style="max-width:160px"></select>
-          <select id="stats-year" class="input" style="max-width:120px"></select>
+      <!-- Campo 2: Año -->
+      <div class="history-card">
+        <label class="history-label">Año *</label>
+        <input id="history-year" type="number" class="history-input" placeholder="2024" />
+      </div>
+
+      <!-- Campo 3: Información de Alumnos -->
+      <div class="history-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <label class="history-label" style="margin:0">Información de Alumnos Inscritos</label>
+          <label class="history-label-secondary">Pagos Recibidos</label>
         </div>
-        
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-label">TOTAL DE REGISTROS</div>
-            <div class="stat-value" style="color:#6EE7E4" id="stat-total">0</div>
-          </div>
-          
-          <div class="stat-card">
-            <div class="stat-label">ALUMNAS REGISTRADAS</div>
-            <div class="stat-value" style="color:var(--pink)" id="stat-students">0</div>
-          </div>
-          
-          <div class="stat-card">
-            <div class="stat-label">PERSONAS Y QUINCEAÑERAS PARA MONTAJES</div>
-            <div class="stat-value" style="color:var(--pink)" id="stat-montajes">0</div>
-          </div>
-          
-          <div class="stat-card">
-            <div class="stat-label">PERSONAS QUE RENTAN</div>
-            <div class="stat-value" style="color:var(--pink)" id="stat-rentals">0</div>
-          </div>
-          
-          <div class="stat-card">
-            <div class="stat-label">TOTAL RECAUDADO</div>
-            <div class="stat-value" style="color:var(--pink)" id="stat-revenue">$0</div>
-          </div>
+        <textarea id="history-students" class="history-textarea" rows="5" placeholder="Ej: 20 personas inscritas en todas las disciplinas. Total recaudado: $7,000. María se inscribió..."></textarea>
+      </div>
+
+      <!-- Campo 4: Información de Rentas -->
+      <div class="history-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <label class="history-label" style="margin:0">Información de Rentas</label>
+          <label class="history-label-secondary">Pagos Recibidos</label>
+        </div>
+        <textarea id="history-rentals" class="history-textarea" rows="5" placeholder="Ej: 3 personas rentaron espacios. Total recaudado: $6,000. María renta Lun-Mie 7–9pm..."></textarea>
+      </div>
+
+      <!-- Campo 5: Información de Quinceañeras y Montajes -->
+      <div class="history-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <label class="history-label" style="margin:0">Información de Quinceañeras y Montajes</label>
+          <label class="history-label-secondary">Pagos Recibidos</label>
+        </div>
+        <textarea id="history-montajes" class="history-textarea" rows="5" placeholder="Ej: 5 personas decidieron que les montásemos algo, 2 Quinceañeras y 3 Grupos. Total recaudado: $6,000. Elena quiere montajes de quince años..."></textarea>
+      </div>
+
+      <!-- Campo 6: Total de Pagos Recibidos -->
+      <div class="history-card">
+        <label class="history-label">Total de Pagos Recibidos *</label>
+        <input id="history-total-payments" type="text" class="history-input" placeholder="$45,000" />
+      </div>
+
+      <!-- Campo 7: Gastos del Mes -->
+      <div class="history-card">
+        <label class="history-label">💸 Gastos del Mes (Renta, servicios, etc.)</label>
+        <textarea id="history-expenses" class="history-textarea" rows="5" placeholder="Ej: Renta del espacio: $10,000. Servicios (luz, agua): $2,500. Mantenimiento: $1,000. Total gastado: $13,500"></textarea>
+      </div>
+
+      <!-- Campo 8: Pago de Maestros -->
+      <div class="history-card">
+        <label class="history-label">💰 Pago de Maestros</label>
+        <div style="margin-bottom:12px;text-align:right">
+          <button id="add-teacher-btn" class="btn">+ Agregar Maestro</button>
+        </div>
+        <div class="table-wrap">
+          <table class="table" id="teachers-table">
+            <thead>
+              <tr>
+                <th>Nombre del Maestro</th>
+                <th>Teléfono/Contacto</th>
+                <th>Disciplinas que Imparte</th>
+                <th>Pago Mensual</th>
+                <th>Adeudo Pendiente</th>
+                <th>Día de Pago</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="teachers-tbody">
+              <!-- rendered by JS -->
+            </tbody>
+          </table>
         </div>
       </div>
-      
-      <!-- Archivo de eliminados -->
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-        <h3 style="color:var(--pink);font-size:24px;font-weight:700;margin:0;display:flex;align-items:center;gap:8px">
-          🗂️ Archivo de eliminados
-        </h3>
-        <button id="archive-toggle" class="btn btn-secondary" type="button">Mostrar archivo</button>
+
+      <!-- Campo 9: Notas Extras -->
+      <div class="history-card">
+        <label class="history-label">📝 Notas Extras</label>
+        <textarea id="history-notes-extra" class="history-textarea" rows="5" placeholder="Notas adicionales, observaciones importantes del mes, recordatorios..."></textarea>
       </div>
-      <p style="color:var(--muted);font-size:14px;margin:8px 0 12px 0">
-        Aquí se guarda toda la información eliminada para consulta futura.
-      </p>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
-        <label style="font-weight:700;color:var(--muted)">Tipo:</label>
-        <select id="archive-type" class="input" style="max-width:220px">
-          <option value="all">Todos</option>
-          <option value="Alumna">Alumna</option>
-          <option value="Renta-Persona">Renta - Persona</option>
-          <option value="Renta-Horario">Renta - Horario</option>
-          <option value="Renta-Gasto">Renta - Gasto</option>
-          <option value="XV">XV Años</option>
-          <option value="Coreografía">Coreografía</option>
-          <option value="Historial">Historial Mensual</option>
-        </select>
-        <label style="font-weight:700;color:var(--muted)">Mes:</label>
-        <select id="archive-month" class="input" style="max-width:160px"></select>
-        <select id="archive-year" class="input" style="max-width:120px"></select>
-        <input id="archive-search" class="input" placeholder="Buscar por nombre o detalle..." style="flex:1;min-width:220px" />
+
+      <!-- Campo 10: Notas Adicionales -->
+      <div class="history-card">
+        <label class="history-label">Notas Adicionales</label>
+        <textarea id="history-notes-additional" class="history-textarea" rows="5" placeholder="Eventos especiales, cambios en el estudio, logros del mes..."></textarea>
       </div>
-      <div id="archive-list" style="display:none;flex-direction:column;gap:10px"></div>
+
+      <!-- Botón Guardar -->
+      <div style="margin-top:24px;text-align:center;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button id="generate-history-btn" class="btn btn-secondary">⚡ Generar Historial del Mes</button>
+        <button id="save-history-btn" class="history-save-btn">💾 Guardar Registro del Mes</button>
+      </div>
+
+      <hr style="margin:40px 0;border:none;border-top:2px solid rgba(0,0,0,0.1)" />
+
+      <!-- Lista de Registros Guardados -->
+      <h3 style="color:var(--pink);font-size:24px;font-weight:700;margin-bottom:16px">📅 Registros Mensuales Guardados</h3>
+      <div id="history-list">
+        <!-- rendered by JS -->
+      </div>
     </div>
   </main>
   <script src="../app.js"></script>
   <script>
-    if(typeof initBackupPage === 'function') initBackupPage();
+    if(typeof initHistoryPage === 'function') initHistoryPage();
   </script>
+</body>
+</html>
+
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Iniciar sesión — Replay</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <main class="page">
+    <div class="container login-card">
+      <h1 class="login-title">Iniciar sesión</h1>
+      <p class="login-subtitle">Acceso seguro con correo y contraseña.</p>
+      <form id="login-form">
+        <div class="form-row">
+          <div class="col">
+            <label for="login-email">Correo</label>
+            <input id="login-email" class="input" type="email" autocomplete="email" placeholder="correo@dominio.com" required />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="col">
+            <label for="login-password">Contraseña</label>
+            <input id="login-password" class="input" type="password" autocomplete="current-password" placeholder="••••••••" required />
+          </div>
+        </div>
+        <div class="form-row">
+          <button class="btn" type="submit">Entrar</button>
+        </div>
+        <div id="login-error" class="login-error"></div>
+      </form>
+    </div>
+  </main>
+  <script src="../app.js"></script>
+</body>
+</html>
+
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Montajes / XV Años — Replay Dance Studio</title>
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="page-header">
+      <button class="back-btn back-btn-large" id="montajes-back">← Volver</button>
+      <h1 style="color:var(--pink);font-size:32px;margin:0">Montajes Coreográficos / XV Años</h1>
+    </header>
+
+    <div class="container">
+      <!-- Tabs -->
+      <div class="tabs-fixed" id="montajes-tabs" style="margin-bottom:20px">
+        <button class="tab active" data-type="xv">👑 XV Años</button>
+        <button class="tab" data-type="choreo">💃 Coreografías</button>
+      </div>
+
+      <!-- XV Años Section -->
+      <section id="xv-section">
+        <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+          <button id="add-xv-btn" class="btn">+ Agregar XV Años</button>
+          <button id="manage-packages-btn" class="btn btn-secondary">📦 Gestionar Paquetes</button>
+          <select id="xv-sort-by" class="input" style="width:180px">
+            <option value="package">Ordenar por Paquete</option>
+            <option value="name">Ordenar Alfabéticamente</option>
+          </select>
+          <input type="text" id="xv-search" class="input" placeholder="Buscar quinceañera..." style="flex:1;min-width:200px" />
+        </div>
+
+        <div class="table-wrap" style="margin-bottom:20px">
+          <table class="table" id="xv-table">
+            <thead>
+              <tr>
+                <th>Paquete</th>
+                <th>Quinceañera</th>
+                <th>Montajes</th>
+                <th>Teléfono</th>
+                <th>Monto</th>
+                <th style="width:100px">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="xv-tbody"></tbody>
+          </table>
+        </div>
+
+        <hr style="margin:30px 0" />
+
+        <!-- Mini Calendar -->
+        <h3 style="color:var(--pink)">📅 Calendario de XV Años</h3>
+        <div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap" class="calendar-controls">
+          <button id="xv-cal-prev" class="btn btn-secondary">◀</button>
+          <div id="xv-cal-display-month" style="font-weight:700;color:var(--pink)"></div>
+          <button id="xv-cal-next" class="btn btn-secondary">▶</button>
+          <button id="xv-cal-copy" class="btn btn-secondary" style="margin-left:auto;font-size:12px">📋 Copiar</button>
+          <button id="xv-cal-paste" class="btn btn-secondary" style="font-size:12px">📥 Pegar</button>
+          <button id="xv-cal-save" class="btn btn-secondary" style="font-size:12px">💾 Guardar</button>
+          <button id="xv-cal-delete" class="btn" style="background:#ff4444;font-size:12px">🗑️ Limpiar</button>
+        </div>
+        <div id="xv-mini-calendar" class="calendar-grid"></div>
+
+        <hr style="margin:30px 0" />
+
+        <!-- Notas -->
+        <h3 style="color:var(--pink)">Recordatorios y Notas</h3>
+        <textarea id="xv-notes" class="input" style="min-height:100px;width:100%" placeholder="Notas generales sobre XV años..."></textarea>
+        <button id="save-xv-notes-btn" class="btn" style="margin-top:8px">Guardar notas</button>
+
+        <hr style="margin:30px 0" />
+
+        <!-- Pagos del Mes XV -->
+        <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap">
+          <h3 style="color:var(--pink);margin-top:0">Pagos del Mes</h3>
+          <div style="font-weight:700;color:var(--muted);font-size:13px">Mes: <span id="xv-payments-month-label" style="color:var(--pink)">—</span></div>
+        </div>
+        <div class="table-wrap" style="margin-top:10px">
+          <table class="table" id="xv-payments-table" aria-label="Pagos del mes">
+            <thead>
+              <tr><th>Fecha</th><th>Quinceañera</th><th>Monto</th><th>%</th><th>Pagó</th></tr>
+            </thead>
+            <tbody id="xv-payments-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Coreografías Section -->
+      <section id="choreo-section" style="display:none">
+        <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+          <button id="add-choreo-btn" class="btn">+ Agregar Coreografía</button>
+          <input type="text" id="choreo-search" class="input" placeholder="Buscar por nombre..." style="flex:1;min-width:200px" />
+        </div>
+
+        <div class="table-wrap" style="margin-bottom:20px">
+          <table class="table" id="choreo-table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Grupo/Escuela</th>
+                <th>Teléfono</th>
+                <th>Montajes</th>
+                <th>Monto</th>
+                <th style="width:100px">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="choreo-tbody"></tbody>
+          </table>
+        </div>
+
+        <hr style="margin:30px 0" />
+
+        <!-- Choreo Calendar -->
+        <h3 style="color:var(--pink)">📅 Calendario de Coreografías</h3>
+        <div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap" class="calendar-controls">
+          <button id="choreo-cal-prev" class="btn btn-secondary">◀</button>
+          <div id="choreo-cal-display-month" style="font-weight:700;color:var(--pink)"></div>
+          <button id="choreo-cal-next" class="btn btn-secondary">▶</button>
+          <button id="choreo-cal-copy" class="btn btn-secondary" style="margin-left:auto;font-size:12px">📋 Copiar</button>
+          <button id="choreo-cal-paste" class="btn btn-secondary" style="font-size:12px">📥 Pegar</button>
+          <button id="choreo-cal-save" class="btn btn-secondary" style="font-size:12px">💾 Guardar</button>
+          <button id="choreo-cal-delete" class="btn" style="background:#ff4444;font-size:12px">🗑️ Limpiar</button>
+        </div>
+        <div id="choreo-mini-calendar" class="calendar-grid"></div>
+
+        <hr style="margin:30px 0" />
+
+        <!-- Choreo Notas -->
+        <h3 style="color:var(--pink)">Recordatorios y Notas</h3>
+        <textarea id="choreo-notes" class="input" style="min-height:100px;width:100%" placeholder="Notas generales sobre coreografías..."></textarea>
+        <button id="save-choreo-notes-btn" class="btn" style="margin-top:8px">Guardar notas</button>
+
+        <hr style="margin:30px 0" />
+
+        <!-- Pagos del Mes Coreografías -->
+        <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap">
+          <h3 style="color:var(--pink);margin-top:0">Pagos del Mes</h3>
+          <div style="font-weight:700;color:var(--muted);font-size:13px">Mes: <span id="choreo-payments-month-label" style="color:var(--pink)">—</span></div>
+        </div>
+        <div class="table-wrap" style="margin-top:10px">
+          <table class="table" id="choreo-payments-table" aria-label="Pagos del mes">
+            <thead>
+              <tr><th>Fecha</th><th>Nombre</th><th>Monto</th><th>%</th><th>Pagó</th></tr>
+            </thead>
+            <tbody id="choreo-payments-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <script src="../app.js"></script>
+  </div>
 </body>
 </html>
 
@@ -305,884 +1156,104 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Montajes / XV Años — Replay Dance Studio</title>
-  <link rel="stylesheet" href="../styles.css" />
-</head>
-<body>
-  <div class="page">
-    <header class="page-header">
-      <button class="back-btn back-btn-large" id="montajes-back">← Volver</button>
-      <h1 style="color:var(--pink);font-size:32px;margin:0">Montajes Coreográficos / XV Años</h1>
-    </header>
-
-    <div class="container">
-      <!-- Tabs -->
-      <div class="tabs-fixed" id="montajes-tabs" style="margin-bottom:20px">
-        <button class="tab active" data-type="xv">👑 XV Años</button>
-        <button class="tab" data-type="choreo">💃 Coreografías</button>
-      </div>
-
-      <!-- XV Años Section -->
-      <section id="xv-section">
-        <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
-          <button id="add-xv-btn" class="btn">+ Agregar XV Años</button>
-          <button id="manage-packages-btn" class="btn btn-secondary">📦 Gestionar Paquetes</button>
-          <select id="xv-sort-by" class="input" style="width:180px">
-            <option value="package">Ordenar por Paquete</option>
-            <option value="name">Ordenar Alfabéticamente</option>
-          </select>
-          <input type="text" id="xv-search" class="input" placeholder="Buscar quinceañera..." style="flex:1;min-width:200px" />
-        </div>
-
-        <div class="table-wrap" style="margin-bottom:20px">
-          <table class="table" id="xv-table">
-            <thead>
-              <tr>
-                <th>Paquete</th>
-                <th>Quinceañera</th>
-                <th>Montajes</th>
-                <th>Teléfono</th>
-                <th>Monto</th>
-                <th style="width:100px">Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="xv-tbody"></tbody>
-          </table>
-        </div>
-
-        <hr style="margin:30px 0" />
-
-        <!-- Mini Calendar -->
-        <h3 style="color:var(--pink)">📅 Calendario de XV Años</h3>
-        <div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap" class="calendar-controls">
-          <button id="xv-cal-prev" class="btn btn-secondary">◀</button>
-          <div id="xv-cal-display-month" style="font-weight:700;color:var(--pink)"></div>
-          <button id="xv-cal-next" class="btn btn-secondary">▶</button>
-          <button id="xv-cal-copy" class="btn btn-secondary" style="margin-left:auto;font-size:12px">📋 Copiar</button>
-          <button id="xv-cal-paste" class="btn btn-secondary" style="font-size:12px">📥 Pegar</button>
-          <button id="xv-cal-save" class="btn btn-secondary" style="font-size:12px">💾 Guardar</button>
-          <button id="xv-cal-delete" class="btn" style="background:#ff4444;font-size:12px">🗑️ Limpiar</button>
-        </div>
-        <div id="xv-mini-calendar" class="calendar-grid"></div>
-
-        <hr style="margin:30px 0" />
-
-        <!-- Notas -->
-        <h3 style="color:var(--pink)">Recordatorios y Notas</h3>
-        <textarea id="xv-notes" class="input" style="min-height:100px;width:100%" placeholder="Notas generales sobre XV años..."></textarea>
-        <button id="save-xv-notes-btn" class="btn" style="margin-top:8px">Guardar notas</button>
-
-        <hr style="margin:30px 0" />
-
-        <!-- Pagos del Mes XV -->
-        <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap">
-          <h3 style="color:var(--pink);margin-top:0">Pagos del Mes</h3>
-          <div style="font-weight:700;color:var(--muted);font-size:13px">Mes: <span id="xv-payments-month-label" style="color:var(--pink)">—</span></div>
-        </div>
-        <div class="table-wrap" style="margin-top:10px">
-          <table class="table" id="xv-payments-table" aria-label="Pagos del mes">
-            <thead>
-              <tr><th>Fecha</th><th>Quinceañera</th><th>Monto</th><th>%</th><th>Pagó</th></tr>
-            </thead>
-            <tbody id="xv-payments-tbody"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- Coreografías Section -->
-      <section id="choreo-section" style="display:none">
-        <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
-          <button id="add-choreo-btn" class="btn">+ Agregar Coreografía</button>
-          <input type="text" id="choreo-search" class="input" placeholder="Buscar por nombre..." style="flex:1;min-width:200px" />
-        </div>
-
-        <div class="table-wrap" style="margin-bottom:20px">
-          <table class="table" id="choreo-table">
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Grupo/Escuela</th>
-                <th>Teléfono</th>
-                <th>Montajes</th>
-                <th>Monto</th>
-                <th style="width:100px">Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="choreo-tbody"></tbody>
-          </table>
-        </div>
-
-        <hr style="margin:30px 0" />
-
-        <!-- Choreo Calendar -->
-        <h3 style="color:var(--pink)">📅 Calendario de Coreografías</h3>
-        <div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap" class="calendar-controls">
-          <button id="choreo-cal-prev" class="btn btn-secondary">◀</button>
-          <div id="choreo-cal-display-month" style="font-weight:700;color:var(--pink)"></div>
-          <button id="choreo-cal-next" class="btn btn-secondary">▶</button>
-          <button id="choreo-cal-copy" class="btn btn-secondary" style="margin-left:auto;font-size:12px">📋 Copiar</button>
-          <button id="choreo-cal-paste" class="btn btn-secondary" style="font-size:12px">📥 Pegar</button>
-          <button id="choreo-cal-save" class="btn btn-secondary" style="font-size:12px">💾 Guardar</button>
-          <button id="choreo-cal-delete" class="btn" style="background:#ff4444;font-size:12px">🗑️ Limpiar</button>
-        </div>
-        <div id="choreo-mini-calendar" class="calendar-grid"></div>
-
-        <hr style="margin:30px 0" />
-
-        <!-- Choreo Notas -->
-        <h3 style="color:var(--pink)">Recordatorios y Notas</h3>
-        <textarea id="choreo-notes" class="input" style="min-height:100px;width:100%" placeholder="Notas generales sobre coreografías..."></textarea>
-        <button id="save-choreo-notes-btn" class="btn" style="margin-top:8px">Guardar notas</button>
-
-        <hr style="margin:30px 0" />
-
-        <!-- Pagos del Mes Coreografías -->
-        <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap">
-          <h3 style="color:var(--pink);margin-top:0">Pagos del Mes</h3>
-          <div style="font-weight:700;color:var(--muted);font-size:13px">Mes: <span id="choreo-payments-month-label" style="color:var(--pink)">—</span></div>
-        </div>
-        <div class="table-wrap" style="margin-top:10px">
-          <table class="table" id="choreo-payments-table" aria-label="Pagos del mes">
-            <thead>
-              <tr><th>Fecha</th><th>Nombre</th><th>Monto</th><th>%</th><th>Pagó</th></tr>
-            </thead>
-            <tbody id="choreo-payments-tbody"></tbody>
-          </table>
-        </div>
-      </section>
-    </div>
-
-    <script src="../app.js"></script>
-  </div>
-</body>
-</html>
-
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Iniciar sesión — Replay</title>
-  <link rel="stylesheet" href="../styles.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
-</head>
-<body>
-  <main class="page">
-    <div class="container login-card">
-      <h1 class="login-title">Iniciar sesión</h1>
-      <p class="login-subtitle">Acceso seguro con correo y contraseña.</p>
-      <form id="login-form">
-        <div class="form-row">
-          <div class="col">
-            <label for="login-email">Correo</label>
-            <input id="login-email" class="input" type="email" autocomplete="email" placeholder="correo@dominio.com" required />
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="col">
-            <label for="login-password">Contraseña</label>
-            <input id="login-password" class="input" type="password" autocomplete="current-password" placeholder="••••••••" required />
-          </div>
-        </div>
-        <div class="form-row">
-          <button class="btn" type="submit">Entrar</button>
-        </div>
-        <div id="login-error" class="login-error"></div>
-      </form>
-    </div>
-  </main>
-  <script src="../app.js"></script>
-</body>
-</html>
-
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Historial Mensual — Replay</title>
+  <title>Respaldo de Datos — Replay</title>
   <link rel="stylesheet" href="../styles.css" />
 </head>
 <body>
   <main class="page">
     <a href="../index.html" class="back-btn">← Volver</a>
-    <h2 class="title" style="font-size:32px;color:var(--pink);font-weight:700">📝 Registrar Nuevo Mes</h2>
-    <hr style="border:none;border-top:3px solid var(--pink);margin:16px 0 24px 0" />
+    
+    <!-- Encabezado Principal -->
+    <div style="margin-bottom:24px">
+      <h2 class="title" style="font-size:32px;color:var(--pink);font-weight:700;display:flex;align-items:center;gap:12px">
+        💾 Información Guardada
+      </h2>
+      <hr style="border:none;border-top:3px solid var(--pink);margin:16px 0" />
+      <p style="color:var(--muted);font-size:14px;margin-top:12px">
+        Aquí puedes ver toda la información que has guardado. Esta información se sincroniza automáticamente con tu hoja de excel.
+      </p>
+    </div>
     
     <div class="container">
-      <!-- Campo 1: Mes -->
-      <div class="history-card">
-        <label class="history-label">Mes *</label>
-        <input id="history-month" type="text" class="history-input" placeholder="Noviembre" />
+      <div class="small-block" style="margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button id="backup-export-btn" class="btn">💾 Exportar respaldo</button>
+        <button id="backup-import-btn" class="btn btn-secondary">📥 Importar respaldo</button>
+        <input type="file" id="backup-import-file" accept="application/json" style="display:none" />
+        <span style="color:var(--muted);font-size:13px">Exporta o importa todo en un clic.</span>
       </div>
+      <!-- Sección de Estadísticas -->
+      <div style="background:#F8F8F8;padding:24px;border-radius:12px;margin-bottom:24px">
+        <h3 style="color:var(--pink);font-size:20px;font-weight:700;margin:0 0 20px 0;display:flex;align-items:center;gap:8px">
+          📊 Estadísticas
+        </h3>
 
-      <!-- Campo 2: Año -->
-      <div class="history-card">
-        <label class="history-label">Año *</label>
-        <input id="history-year" type="number" class="history-input" placeholder="2024" />
-      </div>
-
-      <!-- Campo 3: Información de Alumnos -->
-      <div class="history-card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <label class="history-label" style="margin:0">Información de Alumnos Inscritos</label>
-          <label class="history-label-secondary">Pagos Recibidos</label>
-        </div>
-        <textarea id="history-students" class="history-textarea" rows="5" placeholder="Ej: 20 personas inscritas en todas las disciplinas. Total recaudado: $7,000. María se inscribió..."></textarea>
-      </div>
-
-      <!-- Campo 4: Información de Rentas -->
-      <div class="history-card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <label class="history-label" style="margin:0">Información de Rentas</label>
-          <label class="history-label-secondary">Pagos Recibidos</label>
-        </div>
-        <textarea id="history-rentals" class="history-textarea" rows="5" placeholder="Ej: 3 personas rentaron espacios. Total recaudado: $6,000. María renta Lun-Mie 7–9pm..."></textarea>
-      </div>
-
-      <!-- Campo 5: Información de Quinceañeras y Montajes -->
-      <div class="history-card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <label class="history-label" style="margin:0">Información de Quinceañeras y Montajes</label>
-          <label class="history-label-secondary">Pagos Recibidos</label>
-        </div>
-        <textarea id="history-montajes" class="history-textarea" rows="5" placeholder="Ej: 5 personas decidieron que les montásemos algo, 2 Quinceañeras y 3 Grupos. Total recaudado: $6,000. Elena quiere montajes de quince años..."></textarea>
-      </div>
-
-      <!-- Campo 6: Total de Pagos Recibidos -->
-      <div class="history-card">
-        <label class="history-label">Total de Pagos Recibidos *</label>
-        <input id="history-total-payments" type="text" class="history-input" placeholder="$45,000" />
-      </div>
-
-      <!-- Campo 7: Gastos del Mes -->
-      <div class="history-card">
-        <label class="history-label">💸 Gastos del Mes (Renta, servicios, etc.)</label>
-        <textarea id="history-expenses" class="history-textarea" rows="5" placeholder="Ej: Renta del espacio: $10,000. Servicios (luz, agua): $2,500. Mantenimiento: $1,000. Total gastado: $13,500"></textarea>
-      </div>
-
-      <!-- Campo 8: Pago de Maestros -->
-      <div class="history-card">
-        <label class="history-label">💰 Pago de Maestros</label>
-        <div style="margin-bottom:12px;text-align:right">
-          <button id="add-teacher-btn" class="btn">+ Agregar Maestro</button>
-        </div>
-        <div class="table-wrap">
-          <table class="table" id="teachers-table">
-            <thead>
-              <tr>
-                <th>Nombre del Maestro</th>
-                <th>Teléfono/Contacto</th>
-                <th>Disciplinas que Imparte</th>
-                <th>Pago Mensual</th>
-                <th>Adeudo Pendiente</th>
-                <th>Día de Pago</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="teachers-tbody">
-              <!-- rendered by JS -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Campo 9: Notas Extras -->
-      <div class="history-card">
-        <label class="history-label">📝 Notas Extras</label>
-        <textarea id="history-notes-extra" class="history-textarea" rows="5" placeholder="Notas adicionales, observaciones importantes del mes, recordatorios..."></textarea>
-      </div>
-
-      <!-- Campo 10: Notas Adicionales -->
-      <div class="history-card">
-        <label class="history-label">Notas Adicionales</label>
-        <textarea id="history-notes-additional" class="history-textarea" rows="5" placeholder="Eventos especiales, cambios en el estudio, logros del mes..."></textarea>
-      </div>
-
-      <!-- Botón Guardar -->
-      <div style="margin-top:24px;text-align:center;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-        <button id="generate-history-btn" class="btn btn-secondary">⚡ Generar Historial del Mes</button>
-        <button id="save-history-btn" class="history-save-btn">💾 Guardar Registro del Mes</button>
-      </div>
-
-      <hr style="margin:40px 0;border:none;border-top:2px solid rgba(0,0,0,0.1)" />
-
-      <!-- Lista de Registros Guardados -->
-      <h3 style="color:var(--pink);font-size:24px;font-weight:700;margin-bottom:16px">📅 Registros Mensuales Guardados</h3>
-      <div id="history-list">
-        <!-- rendered by JS -->
-      </div>
-    </div>
-  </main>
-  <script src="../app.js"></script>
-  <script>
-    if(typeof initHistoryPage === 'function') initHistoryPage();
-  </script>
-</body>
-</html>
-
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Exportar — Replay</title>
-  <link rel="stylesheet" href="../styles.css" />
-</head>
-<body>
-  <main class="page">
-    <a href="../index.html" class="back-btn">← Volver</a>
-    <h2 class="title" style="font-size:32px;color:var(--pink);font-weight:700">Exportar a Excel</h2>
-    <div class="container">
-      <div class="small-block" style="margin-bottom:16px">
-        <h3 style="color:var(--pink);font-size:18px;margin:0 0 10px 0">🎯 Exportación segmentada</h3>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
           <label style="font-weight:700;color:var(--muted)">Mes:</label>
-          <select id="export-month" class="input" style="max-width:160px"></select>
-          <select id="export-year" class="input" style="max-width:120px"></select>
-          <label style="font-weight:700;color:var(--muted)">Disciplina:</label>
-          <select id="export-discipline" class="input" style="min-width:200px"></select>
-          <button id="btn-export-students-filtered" class="btn btn-secondary">Exportar Alumnas (filtrado)</button>
-          <button id="btn-export-attendance-filtered" class="btn btn-secondary">Exportar Asistencia (filtrado)</button>
+          <select id="stats-month" class="input" style="max-width:160px"></select>
+          <select id="stats-year" class="input" style="max-width:120px"></select>
         </div>
-      </div>
-      <div class="export-grid">
-        <!-- 1. Alumnas -->
-        <div class="small-block export-card">
-          <h3 style="color:var(--cyan);font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px">📋 Exportar Lista Completa de Alumnas</h3>
-          <p class="card-desc" style="text-align:left">Descarga un archivo Excel con nombres, disciplinas, horarios, montos, contactos, pagos, notas, adeudos, recordatorios y fechas importantes.</p>
-          <div style="text-align:right;margin-top:8px">
-            <button id="btn-export-students" class="btn-cyan">📧 Descargar Alumnas (.xlsx)</button>
+        
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">TOTAL DE REGISTROS</div>
+            <div class="stat-value" style="color:#6EE7E4" id="stat-total">0</div>
           </div>
-        </div>
-
-        <!-- 2. Asistencia -->
-        <div class="small-block export-card">
-          <h3 style="color:var(--cyan);font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px">✅ Exportar Lista de Asistencia</h3>
-          <p class="card-desc" style="text-align:left">Descarga un Excel con todos los registros de asistencia por fecha y disciplina.</p>
-          <div style="text-align:right;margin-top:8px">
-            <button id="btn-export-attendance" class="btn-cyan">📧 Descargar Asistencia (.xlsx)</button>
+          
+          <div class="stat-card">
+            <div class="stat-label">ALUMNAS REGISTRADAS</div>
+            <div class="stat-value" style="color:var(--pink)" id="stat-students">0</div>
           </div>
-        </div>
-
-        <!-- 3. Rentas -->
-        <div class="small-block export-card">
-          <h3 style="color:var(--cyan);font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px">🏢 Exportar Rentas</h3>
-          <p class="card-desc" style="text-align:left">Incluye lista de personas que rentan, horarios semanales, gastos y notas de rentas.</p>
-          <div style="text-align:right;margin-top:8px">
-            <button id="btn-export-rentals" class="btn-cyan">📧 Descargar Rentas (.xlsx)</button>
+          
+          <div class="stat-card">
+            <div class="stat-label">PERSONAS Y QUINCEAÑERAS PARA MONTAJES</div>
+            <div class="stat-value" style="color:var(--pink)" id="stat-montajes">0</div>
           </div>
-        </div>
-
-        <!-- 4. Montajes Coreográficos / XV -->
-        <div class="small-block export-card">
-          <h3 style="color:var(--cyan);font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px">🗓️ Exportar Montajes Coreográficos/Xv años</h3>
-          <p class="card-desc" style="text-align:left">Descarga un Excel con toda la información de XV Años y Coreografías: nombres, paquetes, montajes, coreografías, canciones, chambelanes, horarios, teléfonos, montos, división de pagos, fechas de pago, asistencia, notas, adeudos, calendarios y recordatorios.</p>
-          <div style="text-align:right;margin-top:8px">
-            <button id="btn-export-montajes" class="btn-cyan">📧 Descargar Montajes Coreográficos/Xv años (.xlsx)</button>
+          
+          <div class="stat-card">
+            <div class="stat-label">PERSONAS QUE RENTAN</div>
+            <div class="stat-value" style="color:var(--pink)" id="stat-rentals">0</div>
           </div>
-        </div>
-
-        <!-- 5. Calendarios -->
-        <div class="small-block export-card">
-          <h3 style="color:var(--cyan);font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px">📅 Exportar Calendarios</h3>
-          <p class="card-desc" style="text-align:left">Descarga un Excel con todos los calendarios creados y sus actividades.</p>
-          <div style="text-align:right;margin-top:8px">
-            <button id="btn-export-calendars" class="btn-cyan">📧 Descargar Calendarios (.xlsx)</button>
-          </div>
-        </div>
-
-        <!-- 6. Historial Mensual -->
-        <div class="small-block export-card">
-          <h3 style="color:var(--cyan);font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px">📈 Exportar Historial Mensual</h3>
-          <p class="card-desc" style="text-align:left">Descarga un Excel con los registros mensuales: alumnas inscritas, pagos, rentas, gastos, maestros y notas.</p>
-          <div style="text-align:right;margin-top:8px">
-            <button id="btn-export-history" class="btn-cyan">📧 Descargar Historial (.xlsx)</button>
-          </div>
-        </div>
-
-        <!-- 7. Respaldo Completo (CSV unificado) -->
-        <div class="small-block export-card">
-          <h3 style="color:var(--cyan);font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px">💾 Exportar Respaldo Completo</h3>
-          <p class="card-desc" style="text-align:left">Descarga un archivo Excel con TODA tu información: alumnas, asistencia, rentas, calendarios, horarios semanales, XV años, coreografías e historial mensual.</p>
-          <div style="text-align:right;margin-top:8px">
-            <button id="btn-export-all" class="btn-cyan">📧 Descargar Todo (.xlsx)</button>
+          
+          <div class="stat-card">
+            <div class="stat-label">TOTAL RECAUDADO</div>
+            <div class="stat-value" style="color:var(--pink)" id="stat-revenue">$0</div>
           </div>
         </div>
       </div>
-    </div>
-  </main>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="../app.js"></script>
-</body>
-</html>
-
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Calendario — Replay</title>
-  <link rel="stylesheet" href="../styles.css" />
-  <style>
-    .cal-section {
-      background: white;
-      border-radius: 12px;
-      padding: 24px;
-      margin-bottom: 32px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-    }
-    .cal-section h3 {
-      margin: 0 0 20px 0;
-      color: #ED468F;
-      font-size: 22px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    /* HORARIO SEMANAL */
-    .schedule-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-      background: white;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    .schedule-table th {
-      background: #ED468F;
-      color: white;
-      padding: 12px 8px;
-      font-weight: 700;
-      font-size: 14px;
-      border: 1px solid rgba(0,0,0,0.1);
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-    .schedule-table td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      min-height: 60px;
-      max-width: 160px;
-      vertical-align: top;
-      font-size: 13px;
-    }
-    .schedule-table td.hour-cell {
-      font-weight: 700;
-      text-align: center;
-      background: rgba(237,70,143,0.05);
-      color: #ED468F;
-      width: 100px;
-    }
-    .schedule-item-box {
-      margin-bottom: 4px;
-      padding: 6px 8px;
-      border-radius: 4px;
-      font-size: 10px;
-      position: relative;
-      cursor: pointer;
-      border-left: 3px solid;
-      width: 130px;
-      min-height: 45px;
-      max-height: 70px;
-      display: block;
-      box-sizing: border-box;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .schedule-item-box:hover {
-      opacity: 0.9;
-      transform: translateY(-1px);
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .schedule-item-box .title {
-      font-size: 11px;
-      line-height: 1.2;
-      font-weight: 700;
-    }
-    .schedule-item-box .person {
-      font-size: 9px;
-      opacity: 0.8;
-    }
-    .schedule-item-box .time-range {
-      font-size: 9px;
-      font-weight: 600;
-      margin-top: 2px;
-      opacity: 0.9;
-    }
-    .schedule-item-box .delete-btn {
-      position: absolute;
-      top: 2px;
-      right: 2px;
-      background: rgba(255,255,255,0.9);
-      border: none;
-      color: #ff4444;
-      font-weight: 700;
-      cursor: pointer;
-      padding: 2px 6px;
-      border-radius: 3px;
-      display: none;
-    }
-    .schedule-item-box:hover .delete-btn {
-      display: block;
-    }
-  </style>
-</head>
-<body>
-  <main class="page">
-    <a href="../index.html" class="back-btn">← Volver</a>
-    <h2 class="title" style="font-size:28px;color:var(--pink);">📅 Calendario & Horarios</h2>
-
-    <div class="container">
-      <!-- CALENDARIO MENSUAL -->
-      <div class="small-block calendar-wrap" style="flex:1;min-width:320px">
-        <div class="calendar-controls">
-          <button id="cal-prev-month" class="btn btn-secondary" title="Mes anterior">◀</button>
-          <div style="display:flex;align-items:center;gap:8px">
-            <div style="font-weight:700;color:var(--pink)" id="cal-month-title">Diciembre 2025</div>
-          </div>
-          <button id="cal-next-month" class="btn btn-secondary" title="Mes siguiente">▶</button>
-          <button id="cal-copy" class="btn btn-secondary" style="margin-left:auto;font-size:12px" title="Copiar datos del calendario">📋 Copiar</button>
-          <button id="cal-paste" class="btn btn-secondary" style="font-size:12px" title="Pegar datos del portapapeles">📥 Pegar</button>
-          <button id="cal-save" class="btn btn-secondary" style="font-size:12px" title="Guardar calendario">💾 Guardar</button>
-          <button id="cal-clear" class="btn" style="background:#ff4444;font-size:12px" title="Limpiar mes actual">🗑️ Limpiar</button>
-        </div>
-
-        <div class="calendar-grid" id="calendar-grid">
-          <!-- Generado por JS -->
-        </div>
+      
+      <!-- Archivo de eliminados -->
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <h3 style="color:var(--pink);font-size:24px;font-weight:700;margin:0;display:flex;align-items:center;gap:8px">
+          🗂️ Archivo de eliminados
+        </h3>
+        <button id="archive-toggle" class="btn btn-secondary" type="button">Mostrar archivo</button>
       </div>
-
-      <!-- NOTAS Y RECORDATORIOS -->
-      <div class="small-block calendar-wrap" style="flex:1;min-width:320px">
-        <h3 style="margin-top:0">Recordatorios y Notas</h3>
-        <div style="display:flex;gap:8px;margin-bottom:12px">
-          <button id="reminders-save" class="btn btn-secondary" style="font-size:12px">💾 Guardar notas</button>
-          <button id="reminders-clear" class="btn" style="background:#ff4444;font-size:12px">🗑️ Limpiar notas</button>
-        </div>
-        <textarea id="reminders-text" placeholder="Añade recordatorios o notas generales..." style="width:100%;min-height:120px;padding:12px;background:linear-gradient(135deg,rgba(237,70,143,0.05) 0%,rgba(139,61,137,0.05) 100%);border:2px solid #ED468F;border-radius:8px;font-family:Poppins,sans-serif;font-size:14px;resize:vertical;box-sizing:border-box"></textarea>
-      </div>
-
-      <!-- HORARIO SEMANAL -->
-      <div class="cal-section" style="width:100%">
-        <h3 style="margin-top:0">⏰ Horario Semanal</h3>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px">
-          <div style="display:flex;gap:8px">
-            <button id="schedule-copy" class="btn btn-secondary" style="font-size:12px">📋 Copiar</button>
-            <button id="schedule-paste" class="btn btn-secondary" style="font-size:12px">📥 Pegar</button>
-            <button id="schedule-save" class="btn btn-secondary" style="font-size:12px">💾 Guardar</button>
-          </div>
-          <button id="add-schedule-btn" class="btn">+ Agregar Horario</button>
-        </div>
-
-        <div style="overflow-x:auto">
-          <table class="schedule-table" id="schedule-table">
-            <thead>
-              <tr>
-                <th>Hora</th>
-                <th>Lunes</th>
-                <th>Martes</th>
-                <th>Miércoles</th>
-                <th>Jueves</th>
-                <th>Viernes</th>
-                <th>Sábado</th>
-                <th>Domingo</th>
-              </tr>
-            </thead>
-            <tbody id="schedule-tbody">
-              <!-- Filas generadas por JS -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </main>
-
-  <script src="../app.js"></script>
-  <script>
-    if(typeof initFullCalendarioPage === 'function'){
-      initFullCalendarioPage();
-    }
-  </script>
-</body>
-</html>
-
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Calendario — Replay</title>
-  <link rel="stylesheet" href="../styles.css" />
-  <style>
-    .schedule-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-      background: white;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    .schedule-table th {
-      background: #ED468F;
-      color: white;
-      padding: 12px 8px;
-      font-weight: 700;
-      font-size: 14px;
-      border: 1px solid rgba(0,0,0,0.1);
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-    .schedule-table td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      min-height: 60px;
-      max-width: 160px;
-      vertical-align: top;
-      font-size: 13px;
-    }
-    .schedule-table td.hour-cell {
-      font-weight: 700;
-      text-align: center;
-      background: rgba(237,70,143,0.05);
-      color: #ED468F;
-      width: 80px;
-    }
-    .schedule-item-box {
-      margin-bottom: 4px;
-      padding: 6px 8px;
-      border-radius: 4px;
-      font-size: 10px;
-      position: relative;
-      cursor: pointer;
-      border-left: 3px solid;
-      width: 130px;
-      min-height: 45px;
-      max-height: 70px;
-      display: block;
-      box-sizing: border-box;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .schedule-item-box:hover {
-      opacity: 0.9;
-      transform: translateY(-1px);
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .schedule-item-box .title {
-      font-weight: 700;
-      margin-bottom: 2px;
-    }
-    .schedule-item-box .person {
-      font-size: 9px;
-      color: #666;
-    }
-    .schedule-item-box .title {
-      font-size: 11px;
-      line-height: 1.2;
-    }
-    .schedule-item-box .time-range {
-      font-size: 9px;
-      font-weight: 600;
-      margin-top: 2px;
-      color: rgba(0,0,0,0.7);
-    }
-    .schedule-item-box .delete-btn {
-      position: absolute;
-      top: 2px;
-      right: 2px;
-      background: rgba(255,255,255,0.9);
-      border: none;
-      color: #ff4444;
-      font-weight: 700;
-      cursor: pointer;
-      padding: 2px 6px;
-      border-radius: 3px;
-      display: none;
-    }
-    .schedule-item-box:hover .delete-btn {
-      display: block;
-    }
-  </style>
-</head>
-<body>
-  <main class="page">
-    <a href="../index.html" class="back-btn">← Volver</a>
-    <h2 class="title" style="font-size:28px;color:var(--pink);">📅 Horario Semanal</h2>
-
-    <div class="container">
-      <div style="text-align:right;margin-bottom:16px">
-        <button id="add-schedule-btn" class="btn">+ Agregar Horario</button>
-      </div>
-
-      <div style="overflow-x:auto">
-        <table class="schedule-table" id="schedule-table">
-          <thead>
-            <tr>
-              <th>Hora</th>
-              <th>Lunes</th>
-              <th>Martes</th>
-              <th>Miércoles</th>
-              <th>Jueves</th>
-              <th>Viernes</th>
-              <th>Sábado</th>
-              <th>Domingo</th>
-            </tr>
-          </thead>
-          <tbody id="schedule-tbody">
-            <!-- Filas generadas por JS -->
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </main>
-
-  <script src="../app.js"></script>
-  <script>
-    if(typeof initSimpleCalendarioPage === 'function') initSimpleCalendarioPage();
-  </script>
-</body>
-</html>
-
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Lista de Asistencia — Replay</title>
-  <link rel="stylesheet" href="../styles.css" />
-</head>
-<body>
-  <main class="page">
-    <a href="../index.html" class="back-btn">← Volver</a>
-    <h2 class="title" style="font-size:28px;color:var(--pink);">Lista de Asistencia</h2>
-    <div class="container">
-      <div class="tabs-fixed" id="discipline-tabs" aria-label="Pestañas de disciplinas">
-        <!-- JS will render tabs here (fixed height, no expansion) -->
-      </div>
-
-      <p class="card-desc">Cada fecha es un registro independiente. Todas las asistencias se guardan por fecha y disciplina.</p>
-
-      <div class="small-block" style="width:100%">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px">
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <div style="display:flex;gap:6px;align-items:center">
-              <button id="attendance-prev-day" class="btn btn-secondary" style="width:36px;height:36px;padding:0">◀</button>
-              <div id="attendance-day-label" style="font-weight:700;color:var(--pink)">2026-02-18</div>
-              <button id="attendance-next-day" class="btn btn-secondary" style="width:36px;height:36px;padding:0">▶</button>
-            </div>
-            <input type="date" id="attendance-date" class="input" style="display:none" />
-            <input id="attendance-search" class="input" placeholder="Buscar por nombre..." />
-            <button id="attendance-save" class="btn">Guardar</button>
-            <button id="attendance-history" class="btn btn-secondary">Historial Mes</button>
-          </div>
-        </div>
-
-        <section class="attendance-table-wrap table-wrap" id="attendance-table-wrap">
-          <table class="table" id="attendance-table">
-            <thead>
-              <tr><th>Nombre</th><th>Disciplina</th><th style="width:130px">Asistencia</th><th style="width:200px">Notas</th></tr>
-            </thead>
-            <tbody id="attendance-tbody"></tbody>
-          </table>
-        </section>
-      </div>
-
-    </div>
-  </main>
-  <script src="../app.js"></script>
-</body>
-</html>
-
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Lista de Alumnas — Replay</title>
-  <link rel="stylesheet" href="../styles.css" />
-</head>
-<body>
-  <main class="page">
-    <a href="../index.html" class="back-btn">← Volver</a>
-    <h2 class="title" style="font-size:28px;color:var(--pink);">Lista de Alumnas / Pagos</h2>
-
-    <div class="container">
-      <div class="tabs" id="type-tabs">
-        <div class="tab active" data-type="">Todos los alumnos</div>
-        <div class="tab" data-type="Inscrito">Alumnos Inscritos</div>
-        <div class="tab" data-type="Clase Muestra">Clase Muestra</div>
-        <div class="tab" data-type="Clase Suelta">Clase Suelta</div>
-      </div>
-
-      <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <label style="font-weight:700">Filtrar por disciplina:</label>
-        <select id="discipline-filter" class="input" style="min-width:180px">
-          <option value="">Todas las disciplinas</option>
+      <p style="color:var(--muted);font-size:14px;margin:8px 0 12px 0">
+        Aquí se guarda toda la información eliminada para consulta futura.
+      </p>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+        <label style="font-weight:700;color:var(--muted)">Tipo:</label>
+        <select id="archive-type" class="input" style="max-width:220px">
+          <option value="all">Todos</option>
+          <option value="Alumna">Alumna</option>
+          <option value="Renta-Persona">Renta - Persona</option>
+          <option value="Renta-Horario">Renta - Horario</option>
+          <option value="Renta-Gasto">Renta - Gasto</option>
+          <option value="XV">XV Años</option>
+          <option value="Coreografía">Coreografía</option>
+          <option value="Historial">Historial Mensual</option>
         </select>
-        <button id="edit-disciplines-btn" class="btn" style="margin-left:auto">Editar disciplinas</button>
+        <label style="font-weight:700;color:var(--muted)">Mes:</label>
+        <select id="archive-month" class="input" style="max-width:160px"></select>
+        <select id="archive-year" class="input" style="max-width:120px"></select>
+        <input id="archive-search" class="input" placeholder="Buscar por nombre o detalle..." style="flex:1;min-width:220px" />
       </div>
-
-      <div style="margin-top:10px;margin-bottom:10px">
-        <label style="font-weight:700">Buscar alumna por nombre</label>
-        <input id="search-input" class="input" placeholder="Escribe nombre para buscar..." />
-      </div>
-
-      <div style="margin-bottom:14px;margin-top:10px;text-align:right">
-        <button id="add-student-btn" class="btn">✨ Agregar Alumna</button>
-      </div>
-
-      <table class="table" aria-describedby="tabla-alumnas">
-        <thead>
-          <tr><th>Tipo</th><th>Nombre</th><th>Disciplinas</th><th>Horario</th><th>Monto</th><th>Pago</th><th>Eliminar</th></tr>
-        </thead>
-        <tbody id="alumnas-tbody">
-          <!-- renderizado por JS -->
-        </tbody>
-      </table>
-
-      <div style="margin-top:14px;display:flex;flex-direction:column;gap:12px;flex-wrap:wrap">
-        <div style="display:flex;gap:12px;flex-wrap:wrap">
-          <div class="small-block calendar-wrap" style="flex:1;min-width:320px">
-          <div class="calendar-controls">
-            <button id="cal-prev" class="btn btn-secondary">◀</button>
-            <div style="display:flex;align-items:center;gap:8px">
-              <div style="font-weight:700;color:var(--pink)" id="cal-display-month">Noviembre 2025</div>
-            </div>
-            <button id="cal-next" class="btn btn-secondary">▶</button>
-            <button id="cal-copy" class="btn btn-secondary" style="margin-left:auto;font-size:12px">📋 Copiar</button>
-            <button id="cal-paste" class="btn btn-secondary" style="font-size:12px">📥 Pegar</button>
-            <button id="cal-save" class="btn btn-secondary" style="font-size:12px">💾 Guardar</button>
-            <button id="cal-delete" class="btn" style="background:#ff4444;font-size:12px">🗑️ Limpiar</button>
-          </div>
-
-          <div id="mini-calendar" class="calendar-grid" aria-label="Calendario mensual">
-            <!-- cells rendered by JS --></div>
-        </div>
-
-        <div class="small-block" style="width:100%">
-          <h3 style="margin-top:0;color:var(--pink);font-size:16px">Recordatorios y Notas</h3>
-          <textarea id="reminders-textarea" class="input" placeholder="Añade recordatorios o notas generales..." style="min-height:160px;resize:vertical"></textarea>
-          <div style="text-align:right;margin-top:8px"><button id="save-reminders-btn" class="btn">Guardar notas</button></div>
-        </div>
-        <div class="small-block" style="width:100%">
-          <div style="display:flex;align-items:center;gap:8px;justify-content:space-between">
-            <h3 style="margin:0;color:var(--pink);font-size:16px">Pagos del Mes</h3>
-            <div style="font-weight:700;color:var(--muted);font-size:13px">Mes: <span id="payments-month-label" style="color:var(--pink)">—</span></div>
-          </div>
-          <div class="table-wrap" style="margin-top:10px">
-            <table id="payments-month-table" class="table" aria-label="Pagos del mes">
-              <thead>
-                <tr><th>Fecha</th><th>Alumna</th><th>Disciplinas</th><th>Monto</th><th>Pagó</th></tr>
-              </thead>
-              <tbody id="payments-month-tbody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+      <div id="archive-list" style="display:none;flex-direction:column;gap:10px"></div>
     </div>
   </main>
   <script src="../app.js"></script>
+  <script>
+    if(typeof initBackupPage === 'function') initBackupPage();
+  </script>
 </body>
 </html>
