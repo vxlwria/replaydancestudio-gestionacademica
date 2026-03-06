@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Calendario — Replay</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    .cal-section {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 32px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    .cal-section h3 {
+      margin: 0 0 20px 0;
+      color: #ED468F;
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* HORARIO SEMANAL */
+    .schedule-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .schedule-table th {
+      background: #ED468F;
+      color: white;
+      padding: 12px 8px;
+      font-weight: 700;
+      font-size: 14px;
+      border: 1px solid rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .schedule-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      min-height: 60px;
+      max-width: 160px;
+      vertical-align: top;
+      font-size: 13px;
+    }
+    .schedule-table td.hour-cell {
+      font-weight: 700;
+      text-align: center;
+      background: rgba(237,70,143,0.05);
+      color: #ED468F;
+      width: 100px;
+    }
+    .schedule-item-box {
+      margin-bottom: 4px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      position: relative;
+      cursor: pointer;
+      border-left: 3px solid;
+      width: 130px;
+      min-height: 45px;
+      max-height: 70px;
+      display: block;
+      box-sizing: border-box;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .schedule-item-box:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .schedule-item-box .title {
+      font-size: 11px;
+      line-height: 1.2;
+      font-weight: 700;
+    }
+    .schedule-item-box .person {
+      font-size: 9px;
+      opacity: 0.8;
+    }
+    .schedule-item-box .time-range {
+      font-size: 9px;
+      font-weight: 600;
+      margin-top: 2px;
+      opacity: 0.9;
+    }
+    .schedule-item-box .delete-btn {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      background: rgba(255,255,255,0.9);
+      border: none;
+      color: #ff4444;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 3px;
+      display: none;
+    }
+    .schedule-item-box:hover .delete-btn {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <a href="../index.html" class="back-btn">← Volver</a>
+    <h2 class="title" style="font-size:28px;color:var(--pink);">📅 Calendario & Horarios</h2>
+
+    <div class="container">
+      <!-- CALENDARIO MENSUAL -->
+      <div class="small-block calendar-wrap" style="flex:1;min-width:320px">
+        <div class="calendar-controls">
+          <button id="cal-prev-month" class="btn btn-secondary" title="Mes anterior">◀</button>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="font-weight:700;color:var(--pink)" id="cal-month-title">Diciembre 2025</div>
+          </div>
+          <button id="cal-next-month" class="btn btn-secondary" title="Mes siguiente">▶</button>
+          <button id="cal-copy" class="btn btn-secondary" style="margin-left:auto;font-size:12px" title="Copiar datos del calendario">📋 Copiar</button>
+          <button id="cal-paste" class="btn btn-secondary" style="font-size:12px" title="Pegar datos del portapapeles">📥 Pegar</button>
+          <button id="cal-save" class="btn btn-secondary" style="font-size:12px" title="Guardar calendario">💾 Guardar</button>
+          <button id="cal-clear" class="btn" style="background:#ff4444;font-size:12px" title="Limpiar mes actual">🗑️ Limpiar</button>
+        </div>
+
+        <div class="calendar-grid" id="calendar-grid">
+          <!-- Generado por JS -->
+        </div>
+      </div>
+
+      <!-- NOTAS Y RECORDATORIOS -->
+      <div class="small-block calendar-wrap" style="flex:1;min-width:320px">
+        <h3 style="margin-top:0">Recordatorios y Notas</h3>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button id="reminders-save" class="btn btn-secondary" style="font-size:12px">💾 Guardar notas</button>
+          <button id="reminders-clear" class="btn" style="background:#ff4444;font-size:12px">🗑️ Limpiar notas</button>
+        </div>
+        <textarea id="reminders-text" placeholder="Añade recordatorios o notas generales..." style="width:100%;min-height:120px;padding:12px;background:linear-gradient(135deg,rgba(237,70,143,0.05) 0%,rgba(139,61,137,0.05) 100%);border:2px solid #ED468F;border-radius:8px;font-family:Poppins,sans-serif;font-size:14px;resize:vertical;box-sizing:border-box"></textarea>
+      </div>
+
+      <!-- HORARIO SEMANAL -->
+      <div class="cal-section" style="width:100%">
+        <h3 style="margin-top:0">⏰ Horario Semanal</h3>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+          <div style="display:flex;gap:8px">
+            <button id="schedule-copy" class="btn btn-secondary" style="font-size:12px">📋 Copiar</button>
+            <button id="schedule-paste" class="btn btn-secondary" style="font-size:12px">📥 Pegar</button>
+            <button id="schedule-save" class="btn btn-secondary" style="font-size:12px">💾 Guardar</button>
+          </div>
+          <button id="add-schedule-btn" class="btn">+ Agregar Horario</button>
+        </div>
+
+        <div style="overflow-x:auto">
+          <table class="schedule-table" id="schedule-table">
+            <thead>
+              <tr>
+                <th>Hora</th>
+                <th>Lunes</th>
+                <th>Martes</th>
+                <th>Miércoles</th>
+                <th>Jueves</th>
+                <th>Viernes</th>
+                <th>Sábado</th>
+                <th>Domingo</th>
+              </tr>
+            </thead>
+            <tbody id="schedule-tbody">
+              <!-- Filas generadas por JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../app.js"></script>
+  <script>
+    if(typeof initFullCalendarioPage === 'function'){
+      initFullCalendarioPage();
+    }
+  </script>
+</body>
+</html>
