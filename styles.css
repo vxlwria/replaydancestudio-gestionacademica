@@ -1,0 +1,568 @@
+:root{
+  --pink:#ED468F;
+  --cyan:#5FE9E7;
+  --bg1: #F7FBFC; /* very soft */
+  --card:#FFFFFF;
+  --muted:#6b6b6b;
+  --black:#000000;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:'Poppins',system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial}
+body{background:linear-gradient(135deg, rgba(95,233,231,0.06) 0%, rgba(237,70,143,0.04) 50%, var(--bg1) 100%);color:var(--black);-webkit-font-smoothing:antialiased}
+.page{max-width:1100px;margin:40px auto;padding:24px}
+.auth-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:1100px;margin:14px auto 0;padding:12px 16px;background:var(--card);border-radius:12px;border:1px solid rgba(0,0,0,0.04);box-shadow:0 6px 18px rgba(0,0,0,0.04)}
+.auth-user{font-weight:700;color:var(--black)}
+.auth-logout{white-space:nowrap}
+.hero{text-align:center;margin-bottom:28px}
+.title{font-size:48px;margin:6px 0;color:var(--pink);font-weight:800;letter-spacing:-1px}
+.subtitle{color:var(--black);opacity:0.85;max-width:920px;margin:0 auto}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin-top:28px}
+.card{display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--card);padding:22px;border-radius:14px;text-decoration:none;color:var(--pink);box-shadow:0 6px 18px rgba(237,70,143,0.08);border:1px solid rgba(0,0,0,0.03);transition:transform .16s ease,box-shadow .16s ease}
+.card:hover{transform:translateY(-6px);box-shadow:0 14px 30px rgba(0,0,0,0.06)}
+.card-emoji{font-size:28px;margin-bottom:10px}
+.card-text{font-weight:700;text-align:center}
+.card-desc{margin:8px 0 0;color:var(--muted);font-size:13px;text-align:center}
+
+.student-link{color:var(--pink);text-decoration:none;font-weight:700}
+.student-link:hover{opacity:0.8}
+.xv-link,.choreo-link,.rental-person-link{color:var(--pink);text-decoration:none;font-weight:700}
+.xv-link:hover,.choreo-link:hover,.rental-person-link:hover{opacity:0.8}
+
+/* Back button */
+.back-btn{display:inline-block;padding:8px 12px;border-radius:10px;background:var(--card);border:1px solid rgba(0,0,0,0.04);color:var(--black);text-decoration:none;font-weight:700;margin-bottom:12px}
+.back-btn:hover{box-shadow:0 6px 18px rgba(0,0,0,0.04)}
+
+/* Adeudos table styles */
+#debt-table{width:100%;border-collapse:collapse;border:1px solid rgba(237,70,143,0.12)}
+#debt-table th,#debt-table td{padding:10px 12px;border:1px solid rgba(237,70,143,0.08);font-size:13px}
+#debt-table th{background:linear-gradient(135deg, #ED468F, #5FE9E7);color:white;font-weight:700}
+#debt-table tbody tr:nth-child(even){background:rgba(237,70,143,0.03)}
+#debt-table tbody tr:hover{background:rgba(237,70,143,0.06);transition:background 0.15s ease}
+
+/* Fix mini-calendar cell height so notes don't expand cell */
+.calendar-cell{background:transparent;border-radius:8px;min-height:70px;max-height:70px;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;padding:8px;font-size:13px;overflow:hidden;position:relative}
+.calendar-cell .note-preview{font-size:12px;color:var(--muted);opacity:0.95;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;white-space:normal}
+
+/* Highlight effect for focused day */
+.calendar-cell.highlight{box-shadow:0 6px 20px rgba(237,70,143,0.18), inset 0 0 0 2px rgba(95,233,231,0.12);transform:translateY(-4px);transition:transform .18s ease,box-shadow .18s ease}
+.calendar-cell.highlight::after{content:'';position:absolute;inset:0;border-radius:8px;box-shadow:0 0 0 3px rgba(237,70,143,0.06);pointer-events:none}
+
+@keyframes pulse-highlight{0%{box-shadow:0 6px 20px rgba(237,70,143,0.18)}50%{box-shadow:0 18px 40px rgba(237,70,143,0.24)}100%{box-shadow:0 6px 20px rgba(237,70,143,0.18)}}
+.calendar-cell.pulse{animation:pulse-highlight 1.6s ease-in-out 2}
+
+.footer{text-align:center;margin-top:34px;color:var(--muted)}
+
+/* Page utility styles for inner pages */
+.container{background:var(--card);padding:20px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,0.04)}
+.login-card{max-width:520px;margin:32px auto}
+.login-title{margin:0 0 6px 0;color:var(--pink);font-size:28px;font-weight:800}
+.login-subtitle{margin:0 0 18px 0;color:var(--muted)}
+.login-error{color:#b00020;font-weight:700;margin-top:8px}
+.tabs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.tab{padding:10px 14px;border-radius:999px;background:rgba(0,0,0,0.03);font-weight:700;border:1px solid transparent;cursor:pointer;color:var(--black);appearance:none;font-family:inherit}
+.tab.active{background:var(--card);box-shadow:0 4px 12px rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.04)}
+
+/* table placeholder */
+.table{width:100%;border-collapse:collapse;margin-top:12px;border:1px solid rgba(237,70,143,0.12)}
+.table th,.table td{padding:12px 14px;border:1px solid rgba(237,70,143,0.08);text-align:left}
+.table th{background:#ED468F;color:white;font-weight:700}
+.table tbody tr:nth-child(even){background:rgba(237,70,143,0.03)}
+.table tbody tr:hover{background:rgba(237,70,143,0.06);transition:background 0.15s ease}
+.small-block{background:var(--card);padding:12px;border-radius:10px;border:1px solid rgba(0,0,0,0.03)}
+/* allow flex children to shrink instead of overflowing their container */
+.small-block, .calendar-wrap, .discipline-list{min-width:0}
+.small-block{overflow:hidden}
+
+/* Pay date visible box */
+.paydate-box{padding:6px 10px;border:1px dashed rgba(0,0,0,0.06);border-radius:8px;background:linear-gradient(180deg, rgba(95,233,231,0.02), rgba(237,70,143,0.01));}
+
+/* make tables inside small blocks responsive and avoid expanding the layout */
+#debt-table{table-layout:auto;width:100%;min-width:1000px}
+#debt-table th,#debt-table td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.small-block .table{table-layout:fixed;width:100%;overflow:hidden}
+.small-block .table th,.small-block .table td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#debt-table thead th:nth-child(1){width:20%}
+#debt-table thead th:nth-child(2){width:10%}
+#debt-table thead th:nth-child(3){width:8%}
+#debt-table thead th:nth-child(4){width:35%}
+#debt-table thead th:nth-child(5){width:10%}
+#debt-table thead th:nth-child(6){width:6%}
+#debt-table thead th:nth-child(7){width:6%}
+#debt-table thead th:nth-child(8){width:110px}
+
+/* Keep actions column content on a single line and visible */
+#debt-table td.actions{white-space:nowrap}
+
+/* Allow the Concept column to expand vertically for readability */
+/* keep concept column flexible but prefer single-line presentation; horizontal scroll will reveal overflow */
+#debt-table tbody td:nth-child(4){max-width:none}
+
+/* Floating scroll buttons to reveal hidden columns */
+#debts-block{position:relative}
+.debt-scroll-float{position:absolute;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--card);border:1px solid rgba(0,0,0,0.06);box-shadow:0 8px 20px rgba(0,0,0,0.08);cursor:pointer;z-index:80}
+.debt-scroll-float.left{left:8px}
+.debt-scroll-float.right{right:8px}
+.debt-scroll-float[disabled]{opacity:0.35;pointer-events:none}
+
+/* Scroll wrapper for tables inside blocks */
+.table-wrap{overflow:auto;overflow-x:auto;border-radius:8px}
+/* default adaptive limit (will be adjusted by JS to available viewport) */
+.table-wrap{max-height:55vh}
+
+/* Sticky table header so column titles remain visible while scrolling */
+.table-wrap thead th{position:sticky;top:0;background:var(--card);z-index:3}
+.table-wrap thead th:nth-child(8), .table-wrap tbody td:nth-child(8){
+  position:sticky;right:0;background:var(--card);z-index:4;box-shadow:-8px 0 12px rgba(0,0,0,0.04);
+}
+.table-wrap thead{background:var(--card)}
+.table-wrap table{margin:0}
+
+/* Toggle arrow for debts block */
+.toggle-arrow{background:transparent;border:1px solid rgba(0,0,0,0.06);padding:6px 8px;border-radius:8px;font-weight:700;cursor:pointer;color:var(--pink);transition:background .12s ease}
+.toggle-arrow:hover{background:rgba(237,70,143,0.04)}
+.toggle-arrow svg{display:block;transition:transform .18s ease}
+.toggle-arrow.expanded svg{transform:rotate(180deg)}
+
+/* Collapsed debts block: limit height; expanded removes limit */
+#debts-block{max-height:360px;overflow:hidden;transition:max-height .24s ease}
+#debts-block.expanded{max-height:1200px;overflow:auto}
+
+/* Actions menu for debts rows */
+.debt-actions{position:relative;display:inline-block}
+/* (removed ellipsis menu styles; actions are now inline buttons) */
+
+/* Inline small action buttons visible in the actions column */
+.debt-edit{padding:6px 8px}
+.debt-delete{padding:6px 8px}
+.actions .btn{font-size:13px}
+
+@media (max-width:520px){.title{font-size:34px}.page{padding:16px}}
+
+/* Modal / form styles */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;z-index:60}
+.modal{background:var(--card);border-radius:12px;padding:18px;max-width:820px;width:94%;max-height:90vh;overflow-y:auto;box-shadow:0 18px 40px rgba(0,0,0,0.12)}
+.modal h3{margin-top:0;color:var(--pink)}
+.modal h4{color:var(--pink)}
+.modal hr{border:none;border-top:2px solid rgba(237,70,143,0.18);margin:16px 0}
+.modal section{background:linear-gradient(135deg, rgba(237,70,143,0.06), rgba(95,233,231,0.04));border:1px solid rgba(237,70,143,0.12);border-radius:10px;padding:12px}
+.modal .payments-highlight{background:linear-gradient(135deg, rgba(237,70,143,0.12), rgba(95,233,231,0.08));border:1px solid rgba(237,70,143,0.18);border-radius:10px;padding:12px}
+.modal .history-section{background:linear-gradient(135deg, rgba(237,70,143,0.06), rgba(95,233,231,0.04));border:1px solid rgba(237,70,143,0.12);border-radius:10px;padding:12px}
+.modal #student-history-filters label{color:var(--pink)}
+.form-row{display:flex;gap:10px;align-items:center;margin-top:8px}
+.form-row .col{flex:1}
+.input,textarea,select{width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(0,0,0,0.06)}
+.discipline-list{margin-top:10px;display:flex;flex-direction:column;gap:8px}
+.discipline-item{display:flex;gap:8px;align-items:center;padding:8px;border:1px solid rgba(0,0,0,0.06);border-radius:8px;background:transparent}
+.btn{background:var(--pink);color:white;border:none;padding:8px 12px;border-radius:10px;font-weight:700}
+.btn-secondary{background:transparent;border:1px solid rgba(0,0,0,0.06);color:var(--black)}
+
+/* Cyan action button for exports */
+.btn-cyan{background:var(--cyan);color:white;border:none;padding:12px 14px;border-radius:12px;font-weight:800}
+.btn-cyan:hover{filter:brightness(0.98)}
+
+/* Export grid layout */
+.export-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.export-card h3{margin:0 0 6px 0}
+.pill{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(0,0,0,0.04);font-weight:700}
+
+/* Mini calendar styles */
+.calendar-wrap{display:flex;gap:12px;flex-direction:column}
+.calendar-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.calendar-controls input,.calendar-controls select{padding:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06)}
+.calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;background:var(--card);padding:8px;border-radius:10px;border:1px solid rgba(0,0,0,0.04)}
+.calendar-cell{background:transparent;border-radius:8px;min-height:70px;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;padding:8px;font-size:13px;overflow:hidden;position:relative}
+.calendar-cell .day-num{font-weight:700;color:var(--muted);margin-bottom:6px}
+.calendar-cell .note-preview{font-size:12px;color:var(--muted);opacity:0.95}
+.calendar-cell.has-note{background:linear-gradient(180deg, rgba(237,70,143,0.06), rgba(237,70,143,0.03));box-shadow:inset 0 0 0 1px rgba(237,70,143,0.03)}
+.calendar-weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px}
+.weekday{font-weight:700;color:var(--muted);font-size:13px;text-align:center}
+
+.note-count-badge{position:absolute;top:6px;right:6px;background:rgba(237,70,143,0.9);color:white;border-radius:12px;padding:2px 8px;font-size:10px;font-weight:700}
+
+/* Calendar day cell selection styles */
+.calendar-day-cell.selected{
+  background: linear-gradient(135deg, #ED468F 0%, #d63c7a 100%) !important;
+  color: white !important;
+  border-color: #d63c7a !important;
+  box-shadow: 0 4px 12px rgba(237,70,143,0.4) !important;
+}
+.calendar-day-cell.selected .calendar-day-number,
+.calendar-day-cell.selected .calendar-day-name,
+.calendar-day-cell.selected .calendar-day-content{
+  color: white !important;
+}
+.calendar-day-cell.selected:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(237,70,143,0.5) !important;
+}
+
+/* Discipline manager */
+.disc-manage-list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.disc-item{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.04)}
+.disc-item .name{font-weight:700}
+.disc-actions{display:flex;gap:8px}
+
+/* Attendance page specific styles */
+.tabs-fixed{display:flex;gap:8px;overflow-x:auto;padding:8px 6px;background:transparent;border-radius:10px;margin-bottom:12px;max-height:56px}
+.tabs-fixed .tab{flex:0 0 auto;padding:8px 12px;border-radius:999px;background:rgba(0,0,0,0.03);font-weight:700;white-space:nowrap}
+.tabs-fixed .tab.active{background:var(--card);box-shadow:0 6px 20px rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.04)}
+
+.attendance-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+
+/* keep the tabs fixed height and avoid expanding the container */
+.tabs-fixed{height:56px}
+
+/* attendance table tweaks */
+#attendance-table{border:1px solid rgba(237,70,143,0.12)}
+#attendance-table th, #attendance-table td{padding:10px 12px;border:1px solid rgba(237,70,143,0.08);font-size:13px}
+#attendance-table th{background:#ED468F;color:white;font-weight:700}
+#debt-table th{background:#ED468F;color:#fff;font-weight:700}
+#debt-table td{border:1px solid rgba(237,70,143,0.12)}
+#attendance-table tbody tr:nth-child(even){background:rgba(237,70,143,0.03)}
+#attendance-table tbody tr:hover{background:rgba(237,70,143,0.06);transition:background 0.15s ease}
+.att-note{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06)}
+
+/* ensure back button matches page design and spacing (used across pages) */
+.back-btn{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;background:var(--card);border:1px solid rgba(0,0,0,0.04);color:var(--black);text-decoration:none;font-weight:700;margin-bottom:12px}
+
+/* larger back button for key pages */
+.back-btn-large{padding:12px 16px;font-size:16px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.04)}
+.back-btn-large:hover{box-shadow:0 8px 20px rgba(0,0,0,0.08)}
+
+/* Attendance page: highlight selected discipline tabs */
+.tabs-fixed .tab.active{background:linear-gradient(135deg, rgba(237,70,143,0.1), rgba(95,233,231,0.1));color:var(--pink);box-shadow:0 6px 20px rgba(237,70,143,0.12);border:1px solid rgba(237,70,143,0.2)}
+
+/* Rental page styles */
+.rental-section{margin-bottom:20px}
+.schedule-card{padding:12px;border:1px solid rgba(237,70,143,0.1);border-radius:10px;background:linear-gradient(135deg, rgba(237,70,143,0.02), rgba(95,233,231,0.02))}
+.schedule-card h4{margin-top:0;color:var(--pink)}
+.schedule-card .table{width:100%;border-collapse:collapse;margin-top:8px;border:1px solid rgba(237,70,143,0.12)}
+.schedule-card .table th, .schedule-card .table td{padding:10px 12px;border:1px solid rgba(237,70,143,0.08);font-size:13px}
+.schedule-card .table th{background:#ED468F;color:white;font-weight:700}
+.schedule-card .table tbody tr:nth-child(even){background:rgba(237,70,143,0.03)}
+.schedule-card .table tbody tr:hover{background:rgba(237,70,143,0.06);transition:background 0.15s ease}
+
+#rental-people-wrap, #rental-expenses-wrap{max-height:55vh}
+#rental-people-table, #rental-expenses-table{width:100%;border-collapse:collapse;border:1px solid rgba(237,70,143,0.12)}
+#rental-people-table th, #rental-people-table td, #rental-expenses-table th, #rental-expenses-table td{padding:12px 14px;border:1px solid rgba(237,70,143,0.08);font-size:13px}
+#rental-people-table th, #rental-expenses-table th{background:#ED468F;color:white;font-weight:700;position:sticky;top:0;z-index:2}
+#rental-people-table tbody tr:nth-child(even), #rental-expenses-table tbody tr:nth-child(even){background:rgba(237,70,143,0.03)}
+#rental-people-table tbody tr:hover, #rental-expenses-table tbody tr:hover{background:rgba(237,70,143,0.06);transition:background 0.15s ease}
+
+/* Alumnas: Pagos del mes header */
+#payments-month-table th{background:#ED468F;color:white;font-weight:700}
+#rental-payments-table th{background:#ED468F;color:white;font-weight:700}
+#xv-payments-table th, #choreo-payments-table th{background:#ED468F;color:white;font-weight:700}
+#chambelanes-table th{background:#ED468F;color:white;font-weight:700}
+#choreo-table th{background:#ED468F;color:white;font-weight:700}
+.modal #chambelanes-table th, .modal #choreo-table th{background:#ED468F;color:white;font-weight:700}
+
+/* Montajes page - XV and Choreographies tables */
+#xv-table, #choreo-table{border:1px solid rgba(237,70,143,0.12)}
+#xv-table th, #xv-table td, #choreo-table th, #choreo-table td{padding:10px 12px;border:1px solid rgba(237,70,143,0.08);font-size:13px}
+#xv-table th, #choreo-table th{background:#ED468F;color:white;font-weight:700}
+#xv-table tbody tr:nth-child(even), #choreo-table tbody tr:nth-child(even){background:rgba(237,70,143,0.03)}
+#xv-table tbody tr:hover, #choreo-table tbody tr:hover{background:rgba(237,70,143,0.06);transition:background 0.15s ease}
+
+/* XV and Choreo debts tables */
+#xv-debt-table, #choreo-debt-table{border:1px solid rgba(237,70,143,0.12)}
+#xv-debt-table th, #xv-debt-table td, #choreo-debt-table th, #choreo-debt-table td{padding:10px 12px;border:1px solid rgba(237,70,143,0.08);font-size:13px}
+#xv-debt-table th, #choreo-debt-table th{background:#ED468F;color:white;font-weight:700}
+#xv-debt-table tbody tr:nth-child(even), #choreo-debt-table tbody tr:nth-child(even){background:rgba(237,70,143,0.03)}
+#xv-debt-table tbody tr:hover, #choreo-debt-table tbody tr:hover{background:rgba(237,70,143,0.06);transition:background 0.15s ease}
+
+/* Ensure table cells with <br> tags have proper line-height for readability */
+.table td{line-height:1.6}
+
+/* Main Calendar Página 5 - Planner Digital Style with Pastel Colors */
+#main-calendar-grid .calendar-cell{
+  background:linear-gradient(135deg, #FFD6E8 0%, #FFF 100%);
+  border:2px solid rgba(237,70,143,0.15);
+  min-height:90px;
+  cursor:pointer;
+  transition:all 0.2s ease;
+  box-shadow:0 2px 8px rgba(0,0,0,0.04)
+}
+#main-calendar-grid .calendar-cell:hover{
+  transform:translateY(-2px);
+  box-shadow:0 4px 16px rgba(237,70,143,0.2);
+  border-color:rgba(237,70,143,0.4)
+}
+#main-calendar-grid .calendar-cell.has-note{
+  background:linear-gradient(135deg, #D6F0FF 0%, #FFF 100%);
+  border-color:rgba(95,233,231,0.3)
+}
+#main-calendar-grid .calendar-cell .day-num{
+  font-size:20px;
+  font-weight:800;
+  color:#ED468F;
+  margin-bottom:8px
+}
+#main-calendar-grid .calendar-cell .note-preview{
+  font-size:11px;
+  color:#666;
+  opacity:1;
+  line-height:1.4;
+  display:-webkit-box;
+  -webkit-line-clamp:3;
+  -webkit-box-orient:vertical;
+  overflow:hidden
+}
+
+/* Weekly Schedule Table */
+#weekly-schedule-table{border:1px solid rgba(237,70,143,0.12)}
+#weekly-schedule-table th, #weekly-schedule-table td{padding:8px 10px;border:1px solid rgba(237,70,143,0.08);font-size:12px}
+#weekly-schedule-table th{background:#ED468F;color:white;font-weight:700}
+#weekly-schedule-table tbody tr:nth-child(even){background:rgba(237,70,143,0.03)}
+#weekly-schedule-table tbody tr:hover{background:rgba(237,70,143,0.06);transition:background 0.15s ease}
+#weekly-schedule-table .type-alumnas{color:#ED468F;font-weight:700}
+#weekly-schedule-table .type-rentas{color:#5FE9E7;font-weight:700}
+#weekly-schedule-table .type-xv{color:#A855F7;font-weight:700}
+#weekly-schedule-table .type-choreo{color:#10B981;font-weight:700}
+
+/* Weekly Schedule Grid (Day x Hour format) */
+.schedule-grid-table{width:100%;border-collapse:collapse;border:1px solid rgba(237,70,143,0.12);background:white}
+.schedule-grid-table th{background:#ED468F;color:white;font-weight:700;padding:12px 8px;border:1px solid rgba(237,70,143,0.2);font-size:13px;text-align:center;position:sticky;top:0;z-index:2}
+.schedule-grid-table th:first-child{position:sticky;left:0;z-index:3;background:#C91D6F}
+.schedule-grid-table td{padding:6px;border:1px solid rgba(237,70,143,0.08);min-height:60px;vertical-align:top;font-size:12px;position:relative}
+.schedule-grid-table td:first-child{font-weight:700;text-align:center;background:rgba(237,70,143,0.05);position:sticky;left:0;z-index:1;color:#ED468F}
+.schedule-grid-table tbody tr:hover td:not(:first-child){background:rgba(237,70,143,0.02)}
+
+.schedule-item{
+  background:linear-gradient(135deg, #FFD6E8, #FFE8F0);
+  border-left:3px solid #ED468F;
+  padding:6px 8px;
+  margin-bottom:4px;
+  border-radius:6px;
+  font-size:11px;
+  line-height:1.4;
+  cursor:pointer;
+  transition:all 0.15s ease;
+  position:relative
+}
+.schedule-item:hover{
+  transform:translateX(2px);
+  box-shadow:0 2px 8px rgba(237,70,143,0.2)
+}
+.schedule-item.type-alumnas{background:linear-gradient(135deg, #FFD6E8, #FFE8F0);border-left-color:#ED468F}
+.schedule-item.type-rentas{background:linear-gradient(135deg, #D6F0FF, #E8F5FF);border-left-color:#5FE9E7}
+.schedule-item.type-xv{background:linear-gradient(135deg, #EDD6FF, #F5E8FF);border-left-color:#A855F7}
+.schedule-item.type-choreo{background:linear-gradient(135deg, #D6FFE8, #E8FFF5);border-left-color:#10B981}
+.schedule-item-title{font-weight:700;margin-bottom:2px}
+.schedule-item-contact{color:#666;font-size:10px}
+.schedule-item-delete{
+  position:absolute;
+  top:4px;
+  right:4px;
+  background:#ff4444;
+  color:white;
+  border:none;
+  border-radius:50%;
+  width:16px;
+  height:16px;
+  font-size:10px;
+  cursor:pointer;
+  display:none;
+  padding:0;
+  line-height:16px;
+  text-align:center
+}
+.schedule-item:hover .schedule-item-delete{display:block}
+
+/* History Page - Monthly Records */
+.history-card{
+  background:white;
+  padding:20px;
+  border-radius:12px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.06);
+  margin-bottom:20px;
+  border:1px solid rgba(0,0,0,0.04)
+}
+.schedule-item-box:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.schedule-item-box.selected {
+  outline: 2px solid #111;
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.12) inset;
+}
+.history-label{
+  display:block;
+  color:#ED468F;
+  font-weight:700;
+  font-size:15px;
+  margin-bottom:8px
+}
+.history-label-secondary{
+  color:#ED468F;
+  font-weight:600;
+  font-size:13px;
+  font-style:italic
+}
+.history-input{
+  width:100%;
+  padding:12px 16px;
+  border:1px solid #ddd;
+  border-radius:8px;
+  font-size:14px;
+  transition:border 0.2s ease;
+  font-family:inherit
+}
+.history-input:focus{
+  outline:none;
+  border-color:#ED468F;
+  box-shadow:0 0 0 3px rgba(237,70,143,0.1)
+}
+.history-textarea{
+  width:100%;
+  padding:12px 16px;
+  border:1px solid #ddd;
+  border-radius:8px;
+  font-size:14px;
+  resize:vertical;
+  font-family:inherit;
+  transition:border 0.2s ease
+}
+.history-textarea:focus{
+  outline:none;
+  border-color:#ED468F;
+  box-shadow:0 0 0 3px rgba(237,70,143,0.1)
+}
+.history-save-btn{
+  background:#6EE7E4;
+  border:none;
+  padding:16px 40px;
+  border-radius:12px;
+  font-weight:700;
+  color:white;
+  font-size:16px;
+  cursor:pointer;
+  box-shadow:0 4px 12px rgba(110,231,228,0.3);
+  transition:all 0.2s ease;
+  width:100%;
+  max-width:400px
+}
+.history-save-btn:hover{
+  background:#5DD6D3;
+  transform:translateY(-2px);
+  box-shadow:0 6px 16px rgba(110,231,228,0.4)
+}
+.history-record-item{
+  background:white;
+  padding:16px 20px;
+  border-radius:10px;
+  border:1px solid rgba(237,70,143,0.15);
+  margin-bottom:12px;
+  cursor:pointer;
+  transition:all 0.2s ease;
+  display:flex;
+  justify-content:space-between;
+  align-items:center
+}
+.history-record-item:hover{
+  border-color:#ED468F;
+  box-shadow:0 4px 12px rgba(237,70,143,0.15);
+  transform:translateX(4px)
+}
+.history-record-title{
+  font-weight:700;
+  color:#ED468F;
+  font-size:16px;
+  margin-bottom:4px
+}
+.history-record-date{
+  font-size:13px;
+  color:#666
+}
+.history-record-actions{
+  display:flex;
+  gap:8px
+}
+
+/* Teachers table in history page */
+#teachers-table{width:100%;border-collapse:collapse;border:1px solid rgba(237,70,143,0.12)}
+#teachers-table th, #teachers-table td{padding:12px 14px;border:1px solid rgba(237,70,143,0.08);text-align:left;font-size:13px}
+#teachers-table th{background:#ED468F;color:white;font-weight:700}
+#teachers-table tbody tr:nth-child(even){background:rgba(237,70,143,0.03)}
+#teachers-table tbody tr:hover{background:rgba(237,70,143,0.06);transition:background 0.15s ease}
+
+/* Backup Page - Statistics and Data Display */
+.stats-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));
+  gap:16px
+}
+.stat-card{
+  background:white;
+  padding:20px;
+  border-radius:10px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.06);
+  text-align:center;
+  border:1px solid rgba(0,0,0,0.04)
+}
+.stat-label{
+  font-size:12px;
+  font-weight:700;
+  color:#666;
+  margin-bottom:12px;
+  text-transform:uppercase;
+  letter-spacing:0.5px
+}
+.stat-value{
+  font-size:36px;
+  font-weight:700;
+  line-height:1
+}
+.backup-detail-btn{
+  background:#7DECE2;
+  border:none;
+  padding:16px 32px;
+  border-radius:10px;
+  font-weight:600;
+  color:white;
+  font-size:15px;
+  cursor:pointer;
+  box-shadow:0 4px 12px rgba(125,236,226,0.3);
+  transition:all 0.2s ease;
+  display:inline-flex;
+  align-items:center;
+  gap:8px
+}
+.backup-detail-btn:hover{
+  background:#6DDBD1;
+  transform:translateY(-2px);
+  box-shadow:0 6px 16px rgba(125,236,226,0.4)
+}
+.backup-data-container{
+  background:white;
+  border:1px solid #ddd;
+  border-radius:10px;
+  padding:20px;
+  max-height:600px;
+  overflow:auto;
+  box-shadow:0 2px 8px rgba(0,0,0,0.06)
+}
+
+/* Audit log & JSON detail polish */
+#audit-log-json, #backup-data-json{
+  white-space:pre-wrap;
+  word-break:break-word;
+}
+.backup-data-container::-webkit-scrollbar{
+  width:8px;
+}
+.backup-data-container::-webkit-scrollbar-track{
+  background:#f1f1f1;
+  border-radius:8px;
+}
+.backup-data-container::-webkit-scrollbar-thumb{
+  background:var(--pink);
+  border-radius:8px;
+}
+.backup-data-container::-webkit-scrollbar-thumb:hover{
+  background:#d63c7d;
+}
+
+
