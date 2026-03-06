@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Exportar — Replay</title>
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body>
+  <main class="page">
+    <a href="../index.html" class="back-btn">← Volver</a>
+    <h2 class="title" style="font-size:32px;color:var(--pink);font-weight:700">Exportar a Excel</h2>
+    <div class="container">
+      <div class="small-block" style="margin-bottom:16px">
+        <h3 style="color:var(--pink);font-size:18px;margin:0 0 10px 0">🎯 Exportación segmentada</h3>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <label style="font-weight:700;color:var(--muted)">Mes:</label>
+          <select id="export-month" class="input" style="max-width:160px"></select>
+          <select id="export-year" class="input" style="max-width:120px"></select>
+          <label style="font-weight:700;color:var(--muted)">Disciplina:</label>
+          <select id="export-discipline" class="input" style="min-width:200px"></select>
+          <button id="btn-export-students-filtered" class="btn btn-secondary">Exportar Alumnas (filtrado)</button>
+          <button id="btn-export-attendance-filtered" class="btn btn-secondary">Exportar Asistencia (filtrado)</button>
+        </div>
+      </div>
+      <div class="export-grid">
+        <!-- 1. Alumnas -->
+        <div class="small-block export-card">
+          <h3 style="color:var(--cyan);font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px">📋 Exportar Lista Completa de Alumnas</h3>
+          <p class="card-desc" style="text-align:left">Descarga un archivo Excel con nombres, disciplinas, horarios, montos, contactos, pagos, notas, adeudos, recordatorios y fechas importantes.</p>
+          <div style="text-align:right;margin-top:8px">
+            <button id="btn-export-students" class="btn-cyan">📧 Descargar Alumnas (.xlsx)</button>
+          </div>
+        </div>
+
+        <!-- 2. Asistencia -->
+        <div class="small-block export-card">
+          <h3 style="color:var(--cyan);font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px">✅ Exportar Lista de Asistencia</h3>
+          <p class="card-desc" style="text-align:left">Descarga un Excel con todos los registros de asistencia por fecha y disciplina.</p>
+          <div style="text-align:right;margin-top:8px">
+            <button id="btn-export-attendance" class="btn-cyan">📧 Descargar Asistencia (.xlsx)</button>
+          </div>
+        </div>
+
+        <!-- 3. Rentas -->
+        <div class="small-block export-card">
+          <h3 style="color:var(--cyan);font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px">🏢 Exportar Rentas</h3>
+          <p class="card-desc" style="text-align:left">Incluye lista de personas que rentan, horarios semanales, gastos y notas de rentas.</p>
+          <div style="text-align:right;margin-top:8px">
+            <button id="btn-export-rentals" class="btn-cyan">📧 Descargar Rentas (.xlsx)</button>
+          </div>
+        </div>
+
+        <!-- 4. Montajes Coreográficos / XV -->
+        <div class="small-block export-card">
+          <h3 style="color:var(--cyan);font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px">🗓️ Exportar Montajes Coreográficos/Xv años</h3>
+          <p class="card-desc" style="text-align:left">Descarga un Excel con toda la información de XV Años y Coreografías: nombres, paquetes, montajes, coreografías, canciones, chambelanes, horarios, teléfonos, montos, división de pagos, fechas de pago, asistencia, notas, adeudos, calendarios y recordatorios.</p>
+          <div style="text-align:right;margin-top:8px">
+            <button id="btn-export-montajes" class="btn-cyan">📧 Descargar Montajes Coreográficos/Xv años (.xlsx)</button>
+          </div>
+        </div>
+
+        <!-- 5. Calendarios -->
+        <div class="small-block export-card">
+          <h3 style="color:var(--cyan);font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px">📅 Exportar Calendarios</h3>
+          <p class="card-desc" style="text-align:left">Descarga un Excel con todos los calendarios creados y sus actividades.</p>
+          <div style="text-align:right;margin-top:8px">
+            <button id="btn-export-calendars" class="btn-cyan">📧 Descargar Calendarios (.xlsx)</button>
+          </div>
+        </div>
+
+        <!-- 6. Historial Mensual -->
+        <div class="small-block export-card">
+          <h3 style="color:var(--cyan);font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px">📈 Exportar Historial Mensual</h3>
+          <p class="card-desc" style="text-align:left">Descarga un Excel con los registros mensuales: alumnas inscritas, pagos, rentas, gastos, maestros y notas.</p>
+          <div style="text-align:right;margin-top:8px">
+            <button id="btn-export-history" class="btn-cyan">📧 Descargar Historial (.xlsx)</button>
+          </div>
+        </div>
+
+        <!-- 7. Respaldo Completo (CSV unificado) -->
+        <div class="small-block export-card">
+          <h3 style="color:var(--cyan);font-size:20px;font-weight:800;display:flex;align-items:center;gap:8px">💾 Exportar Respaldo Completo</h3>
+          <p class="card-desc" style="text-align:left">Descarga un archivo Excel con TODA tu información: alumnas, asistencia, rentas, calendarios, horarios semanales, XV años, coreografías e historial mensual.</p>
+          <div style="text-align:right;margin-top:8px">
+            <button id="btn-export-all" class="btn-cyan">📧 Descargar Todo (.xlsx)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="../app.js"></script>
+</body>
+</html>

@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Calendario — Replay</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    .schedule-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .schedule-table th {
+      background: #ED468F;
+      color: white;
+      padding: 12px 8px;
+      font-weight: 700;
+      font-size: 14px;
+      border: 1px solid rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .schedule-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      min-height: 60px;
+      max-width: 160px;
+      vertical-align: top;
+      font-size: 13px;
+    }
+    .schedule-table td.hour-cell {
+      font-weight: 700;
+      text-align: center;
+      background: rgba(237,70,143,0.05);
+      color: #ED468F;
+      width: 80px;
+    }
+    .schedule-item-box {
+      margin-bottom: 4px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      position: relative;
+      cursor: pointer;
+      border-left: 3px solid;
+      width: 130px;
+      min-height: 45px;
+      max-height: 70px;
+      display: block;
+      box-sizing: border-box;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .schedule-item-box:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .schedule-item-box .title {
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+    .schedule-item-box .person {
+      font-size: 9px;
+      color: #666;
+    }
+    .schedule-item-box .title {
+      font-size: 11px;
+      line-height: 1.2;
+    }
+    .schedule-item-box .time-range {
+      font-size: 9px;
+      font-weight: 600;
+      margin-top: 2px;
+      color: rgba(0,0,0,0.7);
+    }
+    .schedule-item-box .delete-btn {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      background: rgba(255,255,255,0.9);
+      border: none;
+      color: #ff4444;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 3px;
+      display: none;
+    }
+    .schedule-item-box:hover .delete-btn {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <a href="../index.html" class="back-btn">← Volver</a>
+    <h2 class="title" style="font-size:28px;color:var(--pink);">📅 Horario Semanal</h2>
+
+    <div class="container">
+      <div style="text-align:right;margin-bottom:16px">
+        <button id="add-schedule-btn" class="btn">+ Agregar Horario</button>
+      </div>
+
+      <div style="overflow-x:auto">
+        <table class="schedule-table" id="schedule-table">
+          <thead>
+            <tr>
+              <th>Hora</th>
+              <th>Lunes</th>
+              <th>Martes</th>
+              <th>Miércoles</th>
+              <th>Jueves</th>
+              <th>Viernes</th>
+              <th>Sábado</th>
+              <th>Domingo</th>
+            </tr>
+          </thead>
+          <tbody id="schedule-tbody">
+            <!-- Filas generadas por JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script src="../app.js"></script>
+  <script>
+    if(typeof initSimpleCalendarioPage === 'function') initSimpleCalendarioPage();
+  </script>
+</body>
+</html>
