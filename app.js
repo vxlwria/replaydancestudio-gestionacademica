@@ -21,6 +21,17 @@ let __supabaseQueueTimer = null;
 let __supabaseQueueInProgress = false;
 const __supabaseWriteQueue = new Map();
 
+// Studio (tenant) scoping — resolved once after login
+let __currentStudioId = null;
+const STUDIO_ID_CACHE_KEY = 'rds_studio_id_cache'; // never synced to cloud
+
+// Supabase Realtime (WebSocket)
+let __realtimeWs = null;
+let __realtimeConnected = false;
+let __realtimeRef = 0;
+let __realtimeReconnectTimer = null;
+let __realtimeHeartbeatTimer = null;
+
 function getAuthSession(){
   try{ return JSON.parse(localStorage.getItem(AUTH_SESSION_KEY) || 'null'); }
   catch(e){ return null; }
@@ -103,6 +114,9 @@ async function loginWithEmail(email, password){
 async function logout(){
   stopSupabaseAutoSync();
   stopSupabaseWriteQueue();
+  stopSupabaseRealtime();
+  __currentStudioId = null;
+  try{ __originalRemoveItem(STUDIO_ID_CACHE_KEY); }catch(e){}
   try{
     const session = getAuthSession();
     if(session?.access_token){
@@ -125,7 +139,7 @@ function injectAuthBar(session){
   bar.className = 'auth-bar';
   const email = session?.user?.email || 'Usuario';
   bar.innerHTML = `
-    <div class="auth-user">👤 ${email}</div>
+    <div class="auth-user">👤 ${email}<span class="auth-studio-name" style="margin-left:8px;font-size:12px;opacity:0.7"></span></div>
     <button class="btn btn-secondary auth-logout" type="button">Cerrar sesión</button>
   `;
   document.body.prepend(bar);
@@ -159,6 +173,7 @@ async function initAuth(){
   if(isLoginPage()){
     stopSupabaseAutoSync();
     stopSupabaseWriteQueue();
+    stopSupabaseRealtime();
     __supabaseReady = false;
     initLoginPage();
     return;
@@ -182,6 +197,7 @@ async function initAuth(){
     }
   }
   injectAuthBar(session);
+  try{ await resolveStudioId(); }catch(e){ console.warn('Studio resolve failed:', e.message || e); }
   try{ await supabaseLoadAll(); }catch(e){}
   __supabaseReady = true;
 
@@ -205,6 +221,50 @@ async function getValidBearerToken(){
   }
 
   return session.access_token || SUPABASE_ANON_KEY;
+}
+
+// Resolve the current user's studio_id from studio_members.
+// Assumes a user belongs to exactly one studio; if multiple exist, the
+// earliest-created one is used (first alphabetically by created_at).
+// TODO: add studio-selection UI if multi-studio users are common.
+async function resolveStudioId(){
+  // Check in-memory first
+  if(__currentStudioId) return __currentStudioId;
+
+  // Check localStorage cache (stored with __originalGetItem/SetItem so it is never synced)
+  // Note: these are defined later in the file but are initialised before this function is called.
+  const cached = __originalGetItem(STUDIO_ID_CACHE_KEY);
+  if(cached){ __currentStudioId = cached; return cached; }
+
+  const session = getAuthSession();
+  const userId = session?.user?.id;
+  if(!userId) return null;
+
+  try{
+    const rows = await supabaseRequest(
+      `/rest/v1/studio_members?select=studio_id,role&user_id=eq.${encodeURIComponent(userId)}&order=created_at.asc&limit=1`
+    );
+    if(Array.isArray(rows) && rows.length > 0){
+      const studioId = rows[0].studio_id;
+      __currentStudioId = studioId;
+      // Persist in localStorage without triggering sync
+      try{ __originalSetItem(STUDIO_ID_CACHE_KEY, studioId); }catch(e){}
+      // Update auth bar to show studio name (best-effort)
+      try{
+        const studioRows = await supabaseRequest(
+          `/rest/v1/studios?select=name&id=eq.${encodeURIComponent(studioId)}&limit=1`
+        );
+        if(Array.isArray(studioRows) && studioRows.length > 0){
+          const nameEl = document.querySelector('.auth-studio-name');
+          if(nameEl) nameEl.textContent = studioRows[0].name;
+        }
+      }catch(e){}
+      return studioId;
+    }
+  }catch(e){
+    console.warn('resolveStudioId failed:', e.message || e);
+  }
+  return null;
 }
 
 function stopSupabaseAutoSync(){
@@ -278,7 +338,107 @@ function startSupabaseAutoSync(){
   __supabaseSyncTimer = setInterval(pullNow, SUPABASE_SYNC_INTERVAL_MS);
   window.addEventListener('focus', pullNow);
   document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) pullNow(); });
+
+  // Start Realtime subscription alongside polling (polling acts as fallback)
+  if(__currentStudioId) startSupabaseRealtime(__currentStudioId);
 }
+
+// ── Supabase Realtime (WebSocket / Phoenix channels) ──────────────────────────
+
+function stopSupabaseRealtime(){
+  if(__realtimeReconnectTimer){ clearTimeout(__realtimeReconnectTimer); __realtimeReconnectTimer = null; }
+  if(__realtimeHeartbeatTimer){ clearInterval(__realtimeHeartbeatTimer); __realtimeHeartbeatTimer = null; }
+  if(__realtimeWs){ try{ __realtimeWs.close(); }catch(e){} __realtimeWs = null; }
+  __realtimeConnected = false;
+}
+
+function __realtimeSend(topic, event, payload, ref){
+  if(!__realtimeWs || __realtimeWs.readyState !== 1 /* OPEN */) return;
+  __realtimeWs.send(JSON.stringify({ topic, event, payload, ref: String(ref || ++__realtimeRef) }));
+}
+
+function __applyRemoteChange(change){
+  try{
+    const key = (change.record || change.old_record || {}).key;
+    if(!key || !String(key).startsWith('rds_') || key === AUTH_SESSION_KEY) return;
+    if(__supabaseWriteQueue.has(key)) return; // pending local write wins
+
+    if(change.type === 'DELETE'){
+      const prev = __originalGetItem(key);
+      if(prev === null) return;
+      __supabaseSyncGuard = true;
+      try{ __originalRemoveItem(key); }finally{ __supabaseSyncGuard = false; }
+    } else {
+      const nextRaw = JSON.stringify(change.record?.value);
+      const prevRaw = __originalGetItem(key);
+      if(prevRaw === nextRaw) return;
+      __supabaseSyncGuard = true;
+      try{ __originalSetItem(key, nextRaw); }finally{ __supabaseSyncGuard = false; }
+    }
+    try{
+      window.dispatchEvent(new CustomEvent('rds_remote_sync', { detail: { changedKeys: [key] } }));
+    }catch(e){}
+  }catch(e){ /* ignore parse errors */ }
+}
+
+function startSupabaseRealtime(studioId){
+  stopSupabaseRealtime();
+  if(!studioId || isLoginPage()) return;
+
+  const wsBase = SUPABASE_URL.replace(/^https?:\/\//, 'wss://');
+  const wsUrl = `${wsBase}/realtime/v1/websocket?apikey=${encodeURIComponent(SUPABASE_ANON_KEY)}&vsn=1.0.0`;
+  try{
+    const ws = new WebSocket(wsUrl);
+    __realtimeWs = ws;
+
+    ws.onopen = ()=>{
+      __realtimeConnected = true;
+      const session = getAuthSession();
+      const token = session?.access_token || SUPABASE_ANON_KEY;
+      const ref = String(++__realtimeRef);
+      __realtimeSend('realtime:*', 'phx_join', {
+        config: {
+          broadcast: { self: false },
+          presence: { key: '' },
+          postgres_changes: [{
+            event: '*',
+            schema: 'public',
+            table: SUPABASE_TABLE,
+            filter: `studio_id=eq.${studioId}`
+          }]
+        },
+        access_token: token
+      }, ref);
+      // Heartbeat every 30 s (required by Phoenix protocol)
+      __realtimeHeartbeatTimer = setInterval(()=>{
+        __realtimeSend('phoenix', 'heartbeat', {}, ++__realtimeRef);
+      }, 30000);
+    };
+
+    ws.onmessage = (evt)=>{
+      try{
+        const msg = JSON.parse(evt.data);
+        if(msg.event === 'postgres_changes' && msg.payload && msg.payload.data){
+          __applyRemoteChange(msg.payload.data);
+        }
+      }catch(e){ /* ignore */ }
+    };
+
+    ws.onclose = ()=>{
+      __realtimeConnected = false;
+      if(__realtimeHeartbeatTimer){ clearInterval(__realtimeHeartbeatTimer); __realtimeHeartbeatTimer = null; }
+      // Reconnect after 5 s if not intentionally stopped and not on login page
+      if(!isLoginPage() && __realtimeWs === ws){
+        __realtimeReconnectTimer = setTimeout(()=>{ startSupabaseRealtime(studioId); }, 5000);
+      }
+    };
+
+    ws.onerror = ()=>{ __realtimeConnected = false; };
+  }catch(e){
+    console.warn('Realtime WebSocket init failed:', e.message || e);
+  }
+}
+
 
 async function supabaseRequest(path, options = {}){
   const doRequest = async (token)=>{
@@ -317,9 +477,13 @@ async function supabaseRequest(path, options = {}){
 }
 
 async function supabaseLoadAll(){
+  const studioId = __currentStudioId;
+  if(!studioId) return []; // no studio resolved — skip cloud pull
   const changedKeys = [];
   try{
-    const rows = await supabaseRequest(`/rest/v1/${SUPABASE_TABLE}?select=key,value`);
+    const rows = await supabaseRequest(
+      `/rest/v1/${SUPABASE_TABLE}?select=key,value&studio_id=eq.${encodeURIComponent(studioId)}`
+    );
     if(!Array.isArray(rows)) return changedKeys;
     __supabaseSyncGuard = true;
     rows.forEach(r=>{
@@ -329,7 +493,7 @@ async function supabaseLoadAll(){
       const nextRaw = JSON.stringify(r.value);
       const prevRaw = localStorage.getItem(r.key);
       if(prevRaw === nextRaw) return;
-      localStorage.setItem(r.key, nextRaw);
+      __originalSetItem(r.key, nextRaw);
       changedKeys.push(r.key);
     });
   }catch(e){
@@ -341,12 +505,24 @@ async function supabaseLoadAll(){
 }
 
 async function supabaseUpsert(key, value){
+  const studioId = __currentStudioId;
+  if(!studioId) return false; // no studio — skip
+  const session = getAuthSession();
+  const updatedBy = session?.user?.id || null;
   try{
-    await supabaseRequest(`/rest/v1/${SUPABASE_TABLE}?on_conflict=key`, {
-      method: 'POST',
-      headers: { Prefer: 'resolution=merge-duplicates' },
-      body: JSON.stringify([{ key, value }])
-    });
+    await supabaseRequest(
+      `/rest/v1/${SUPABASE_TABLE}?on_conflict=studio_id%2Ckey`,
+      {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates' },
+        body: JSON.stringify([{
+          studio_id: studioId,
+          key,
+          value,
+          updated_by: updatedBy
+        }])
+      }
+    );
     return true;
   }catch(e){
     console.warn('Supabase upsert failed:', e.message || e);
@@ -355,10 +531,13 @@ async function supabaseUpsert(key, value){
 }
 
 async function supabaseDelete(key){
+  const studioId = __currentStudioId;
+  if(!studioId) return false; // no studio — skip
   try{
-    await supabaseRequest(`/rest/v1/${SUPABASE_TABLE}?key=eq.${encodeURIComponent(key)}` , {
-      method: 'DELETE'
-    });
+    await supabaseRequest(
+      `/rest/v1/${SUPABASE_TABLE}?studio_id=eq.${encodeURIComponent(studioId)}&key=eq.${encodeURIComponent(key)}`,
+      { method: 'DELETE' }
+    );
     return true;
   }catch(e){
     console.warn('Supabase delete failed:', e.message || e);
@@ -411,6 +590,7 @@ function downloadXLSXWorkbook(filename, sheets){
 const AUDIT_KEY = 'rds_audit_log_v1';
 const __originalSetItem = localStorage.setItem.bind(localStorage);
 const __originalRemoveItem = localStorage.removeItem.bind(localStorage);
+const __originalGetItem = localStorage.getItem.bind(localStorage);
 let __auditWriteGuard = false;
 
 function __safeParseJSON(val){
@@ -458,7 +638,7 @@ localStorage.setItem = function(key, value){
         page: (typeof location !== 'undefined' ? location.pathname : ''),
       });
     }
-    if(__supabaseReady && !__supabaseSyncGuard && key && key.startsWith('rds_') && key !== AUTH_SESSION_KEY){
+    if(__supabaseReady && !__supabaseSyncGuard && key && key.startsWith('rds_') && key !== AUTH_SESSION_KEY && key !== STUDIO_ID_CACHE_KEY){
       const parsed = __safeParseJSON(value);
       queueSupabaseUpsert(key, parsed);
     }
@@ -479,7 +659,7 @@ localStorage.removeItem = function(key){
         page: (typeof location !== 'undefined' ? location.pathname : ''),
       });
     }
-    if(__supabaseReady && !__supabaseSyncGuard && key && key.startsWith('rds_') && key !== AUTH_SESSION_KEY){
+    if(__supabaseReady && !__supabaseSyncGuard && key && key.startsWith('rds_') && key !== AUTH_SESSION_KEY && key !== STUDIO_ID_CACHE_KEY){
       queueSupabaseDelete(key);
     }
   }catch(e){ /* ignore */ }
@@ -2128,6 +2308,23 @@ function initAlumnasPage(){
     adjustTableWrapHeight();
     window.addEventListener('resize', adjustTableWrapHeight);
   }
+
+  // Re-render alumnas page when remote sync delivers changes
+  window.addEventListener('rds_remote_sync', (e)=>{
+    try{
+      const keys = e && e.detail && e.detail.changedKeys;
+      if(!Array.isArray(keys)) return;
+      const needsStudents = keys.some(k=> k===STORAGE_KEY || k===DISC_KEY || k===DELETED_DISC_KEY || k===ARCHIVE_KEY || k===DEBT_KEY);
+      const needsCal      = keys.some(k=> k===CAL_KEY);
+      if(needsStudents){
+        try{ renderStudentsTable(); }catch(ex){}
+        try{ renderMonthlyPaymentsList(); }catch(ex){}
+      }
+      if(needsCal){
+        try{ initMiniCalendar(); }catch(ex){}
+      }
+    }catch(err){}
+  });
 }
 
 /* ---------------- Mini-calendar ---------------- */
@@ -2778,6 +2975,25 @@ window.addEventListener('storage', (e)=>{
     }
   }catch(err){}
 });
+
+// Re-render attendance page when remote sync delivers changes
+window.addEventListener('rds_remote_sync', (e)=>{
+  try{
+    const keys = e && e.detail && e.detail.changedKeys;
+    if(!Array.isArray(keys)) return;
+    const needsStudents = keys.some(k=> k===STORAGE_KEY || k===DISC_KEY || k===DELETED_DISC_KEY);
+    const needsAtt     = keys.some(k=> k===ATT_KEY);
+    if(needsStudents){
+      try{ refreshAttendanceStudentList(); }catch(ex){}
+      try{ if(typeof refreshDebtStudentOptions === 'function') refreshDebtStudentOptions(); }catch(ex){}
+      try{ renderDebtsTable(); }catch(ex){}
+    }
+    if(needsAtt || needsStudents){
+      try{ renderAttendanceTable(); }catch(ex){}
+    }
+  }catch(err){}
+});
+
 
 /* -------- Rental Management Page (Página 3) -------- */
 
@@ -3947,6 +4163,24 @@ function initRentasPage(){
   renderRentalPeople(getCurrentMonthKey());
   renderRentalPaymentsList(getCurrentMonthKey());
   loadNotesForCurrentMonth();
+
+  // Re-render rental page when remote sync delivers changes
+  window.addEventListener('rds_remote_sync', (e)=>{
+    try{
+      const keys = e && e.detail && e.detail.changedKeys;
+      if(!Array.isArray(keys)) return;
+      const needsRentals = keys.some(k=>
+        k===RENTAL_PEOPLE_KEY || k===RENTAL_SCHEDULES_KEY ||
+        k===RENTAL_WEEKLY_SCHEDULE_KEY || String(k).startsWith(RENTAL_NOTES_KEY)
+      );
+      if(needsRentals){
+        try{ renderRentalSchedule(); }catch(ex){}
+        try{ renderRentalPeople(getCurrentMonthKey()); }catch(ex){}
+        try{ renderRentalPaymentsList(getCurrentMonthKey()); }catch(ex){}
+        try{ loadNotesForCurrentMonth(); }catch(ex){}
+      }
+    }catch(err){}
+  });
 }
 
 // run on pages that include alumnas form
@@ -6429,6 +6663,28 @@ function initMontajesPage(){
   // Choreo Debts
   renderChoreographies();
   renderChoreoPaymentsList(getCurrentChoreoMonthKey());
+
+  // Re-render montajes page when remote sync delivers changes
+  window.addEventListener('rds_remote_sync', (e)=>{
+    try{
+      const keys = e && e.detail && e.detail.changedKeys;
+      if(!Array.isArray(keys)) return;
+      const needsXV = keys.some(k=>
+        k===XV_KEY || k===XV_CAL_KEY || String(k).startsWith(XV_NOTES_KEY) || k===PACKAGES_KEY
+      );
+      const needsChoreo = keys.some(k=>
+        k===CHOREO_KEY || k===CHOREO_CAL_KEY || String(k).startsWith(CHOREO_NOTES_KEY)
+      );
+      if(needsXV){
+        try{ renderXVTable(); }catch(ex){}
+        try{ renderXVPaymentsList(getCurrentXVMonthKey()); }catch(ex){}
+      }
+      if(needsChoreo){
+        try{ renderChoreographies(); }catch(ex){}
+        try{ renderChoreoPaymentsList(getCurrentChoreoMonthKey()); }catch(ex){}
+      }
+    }catch(err){}
+  });
 }
 
 /* ========================================
@@ -7336,6 +7592,22 @@ function initCalendarioPage(){
     renderWeeklySchedule();
     render(); // Also update calendar to show new schedules
   }, 2000);
+
+  // Re-render when remote sync delivers changes
+  window.addEventListener('rds_remote_sync', (e)=>{
+    try{
+      const keys = e && e.detail && e.detail.changedKeys;
+      if(!Array.isArray(keys)) return;
+      const needsCal = keys.some(k=>
+        k===MAIN_CAL_KEY || k===CAL_KEY || k===RENTAL_WEEKLY_SCHEDULE_KEY ||
+        k===XV_CAL_KEY || k===CHOREO_CAL_KEY
+      );
+      if(needsCal){
+        try{ render(); }catch(ex){}
+        try{ renderWeeklySchedule(); }catch(ex){}
+      }
+    }catch(err){}
+  });
 }
 
 /* ========================================
@@ -8875,6 +9147,22 @@ function initFullCalendarioPage(){
 
   renderCalendar();
   renderSchedule();
+
+  // Re-render calendario page when remote sync delivers changes
+  window.addEventListener('rds_remote_sync', (e)=>{
+    try{
+      const keys = e && e.detail && e.detail.changedKeys;
+      if(!Array.isArray(keys)) return;
+      const needsCal = keys.some(k=>
+        k===MAIN_CAL_KEY || k===CAL_KEY || k===RENTAL_WEEKLY_SCHEDULE_KEY ||
+        k===XV_CAL_KEY || k===CHOREO_CAL_KEY
+      );
+      if(needsCal){
+        try{ renderCalendar(); }catch(ex){}
+        try{ renderSchedule(); }catch(ex){}
+      }
+    }catch(err){}
+  });
 }
 
 function syncMonthlyCalendarFromAllSources(){
