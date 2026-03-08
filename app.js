@@ -7784,7 +7784,10 @@ function loadSimpleSchedule(monthKey){
 // Save schedules by month key
 function saveSimpleSchedule(monthKey, schedules){
   try {
-    const allSchedules = loadSimpleSchedule();
+    const loaded = loadSimpleSchedule();
+    // Ensure we have an object (guard against corrupted array data)
+    const allSchedules = (loaded && typeof loaded === 'object' && !Array.isArray(loaded))
+      ? loaded : {};
     allSchedules[monthKey] = schedules;
     rdsSetItem(SIMPLE_SCHEDULE_KEY, JSON.stringify(allSchedules));
   } catch(e) {
@@ -7866,8 +7869,20 @@ function dayNameFromDate(dateStr){
 }
 
 function upsertSimpleScheduleSource(sourceKey, entries){
-  const current = loadSimpleSchedule();
-  const filtered = current = current.filter(item => item.source !== sourceKey);
+  const loaded = loadSimpleSchedule();
+  // Safety: if data is not a plain object (e.g. corrupted), reset to empty object
+  // rather than silently skipping, so the sync can still proceed
+  const allSchedules = (loaded && typeof loaded === 'object' && !Array.isArray(loaded))
+    ? loaded : {};
+  if (loaded !== allSchedules) {
+    console.warn('upsertSimpleScheduleSource: schedule data had unexpected format, reset to empty object for', sourceKey);
+  }
+  // Remove entries with this sourceKey from all existing months
+  Object.keys(allSchedules).forEach(mKey => {
+    if (Array.isArray(allSchedules[mKey])) {
+      allSchedules[mKey] = allSchedules[mKey].filter(item => item && item.source !== sourceKey);
+    }
+  });
   const clean = (entries || []).filter(e => e && e.day && e.time).map((e, idx) => ({
     id: e.id || `${sourceKey}-${Date.now()}-${idx}`,
     source: sourceKey,
@@ -7879,7 +7894,18 @@ function upsertSimpleScheduleSource(sourceKey, entries){
     timeEnd: e.timeEnd || null,
     color: e.color || '#ED468F'
   }));
-  saveSimpleSchedule(filtered.concat(clean));
+  // Add new entries to the current month. Sync entries are recurring weekly
+  // patterns (identified by day name, not a specific date), so the current
+  // month is the correct bucket for them.
+  const now = new Date();
+  const currentMKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  if (!Array.isArray(allSchedules[currentMKey])) allSchedules[currentMKey] = [];
+  allSchedules[currentMKey] = allSchedules[currentMKey].concat(clean);
+  try {
+    rdsSetItem(SIMPLE_SCHEDULE_KEY, JSON.stringify(allSchedules));
+  } catch(e) {
+    console.error('Error saving schedule in upsertSimpleScheduleSource:', e);
+  }
 }
 
 function syncSimpleScheduleForRentals(){
@@ -8011,6 +8037,10 @@ function initSimpleCalendarioPage(){
   const tbody = document.getElementById('schedule-tbody');
   if(!tbody) return;
 
+  // Current month key for storage (YYYY-MM)
+  const _now = new Date();
+  const currentMonthKey = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}`;
+
   // Traer datos recientes de rentas, coreografías y XV al horario simple
   try{ syncSimpleScheduleForRentals(); }catch(e){}
   try{ syncSimpleScheduleForChoreos(); }catch(e){}
@@ -8059,7 +8089,7 @@ function initSimpleCalendarioPage(){
   }
 
   function renderSchedule(){
-    const schedules = loadSimpleSchedule();
+    const schedules = loadSimpleSchedule(currentMonthKey);
     tbody.innerHTML = '';
 
     const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
@@ -8135,7 +8165,7 @@ function initSimpleCalendarioPage(){
             e.stopPropagation();
             if(!confirm('¿Eliminar este horario?')) return;
             const filtered = schedules.filter(s => s.id !== sch.id);
-            saveSimpleSchedule(filtered);
+            saveSimpleSchedule(currentMonthKey, filtered);
             renderSchedule();
           });
           box.appendChild(deleteBtn);
