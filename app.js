@@ -7867,7 +7867,8 @@ function dayNameFromDate(dateStr){
 
 function upsertSimpleScheduleSource(sourceKey, entries){
   const current = loadSimpleSchedule();
-  const filtered = current.filter(item => item.source !== sourceKey);
+  const filtered = if(!Array.isArray(current)) current = [];
+current = current.filter(item => item && item.source !== sourceKey);
   const clean = (entries || []).filter(e => e && e.day && e.time).map((e, idx) => ({
     id: e.id || `${sourceKey}-${Date.now()}-${idx}`,
     source: sourceKey,
