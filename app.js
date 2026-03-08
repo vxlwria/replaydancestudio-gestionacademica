@@ -140,11 +140,31 @@ function injectAuthBar(session){
   const email = session?.user?.email || 'Usuario';
   bar.innerHTML = `
     <div class="auth-user">👤 ${email}<span class="auth-studio-name" style="margin-left:8px;font-size:12px;opacity:0.7"></span></div>
-    <button class="btn btn-secondary auth-logout" type="button">Cerrar sesión</button>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-secondary auth-switch-studio" type="button" style="font-size:12px;padding:4px 10px" title="Cambiar estudio">🔄 Cambiar estudio</button>
+      <button class="btn btn-secondary auth-logout" type="button">Cerrar sesión</button>
+    </div>
   `;
   document.body.prepend(bar);
-  const btn = bar.querySelector('.auth-logout');
-  if(btn) btn.addEventListener('click', ()=> logout());
+  const logoutBtn = bar.querySelector('.auth-logout');
+  if(logoutBtn) logoutBtn.addEventListener('click', ()=> logout());
+  const switchBtn = bar.querySelector('.auth-switch-studio');
+  if(switchBtn) switchBtn.addEventListener('click', async ()=>{
+    // Clear cached studio and re-resolve (shows selector if multiple studios)
+    __currentStudioId = null;
+    try{ __originalRemoveItem(STUDIO_ID_CACHE_KEY); }catch(e){}
+    stopSupabaseRealtime();
+    try{
+      await resolveStudioId();
+      if(__currentStudioId){
+        await supabaseLoadAll();
+        startSupabaseRealtime(__currentStudioId);
+        try{
+          window.dispatchEvent(new CustomEvent('rds_remote_sync', { detail: { changedKeys: [] } }));
+        }catch(e){}
+      }
+    }catch(e){ console.warn('Switch studio failed:', e.message || e); }
+  });
 }
 
 function initLoginPage(){
@@ -201,8 +221,43 @@ async function initAuth(){
   try{ await supabaseLoadAll(); }catch(e){}
   __supabaseReady = true;
 
+  // Migrate any pre-existing localStorage data to Supabase (runs once per install)
+  try{ migrateLocalStorageToSupabase(); }catch(e){ console.warn('Migration error:', e.message || e); }
+
   startSupabaseAutoSync();
   ensureSupabaseWriteQueue();
+}
+
+// Migrate pre-existing rds_* data from localStorage to Supabase.
+// Runs once after login; skips keys that are already present in Supabase
+// (supabaseLoadAll already fetched those) and marks completion so it
+// does not run again on subsequent page loads.
+const MIGRATION_DONE_KEY = 'rds_migration_done_v1';
+function migrateLocalStorageToSupabase(){
+  if(!__supabaseReady || !__currentStudioId) return;
+  try{
+    if(__originalGetItem(MIGRATION_DONE_KEY)) return; // already migrated
+  }catch(e){ return; }
+
+  let migrated = 0;
+  const SKIP_KEYS = new Set([AUTH_SESSION_KEY, STUDIO_ID_CACHE_KEY, AUDIT_KEY, MIGRATION_DONE_KEY]);
+  // Snapshot keys first to avoid issues with localStorage length changing mid-iteration
+  const allKeys = [];
+  for(let i = 0; i < localStorage.length; i++){
+    const k = localStorage.key(i);
+    if(k) allKeys.push(k);
+  }
+  allKeys.forEach(key=>{
+    if(!key.startsWith('rds_') || SKIP_KEYS.has(key)) return;
+    if(__supabaseWriteQueue.has(key)) return; // already queued
+    const raw = __originalGetItem(key);
+    if(raw === null) return;
+    const parsed = __safeParseJSON(raw);
+    queueSupabaseUpsert(key, parsed);
+    migrated++;
+  });
+  try{ __originalSetItem(MIGRATION_DONE_KEY, '1'); }catch(e){}
+  if(migrated > 0) console.log(`[RDS] Migración: ${migrated} claves enviadas a Supabase`);
 }
 
 async function getValidBearerToken(){
@@ -224,15 +279,13 @@ async function getValidBearerToken(){
 }
 
 // Resolve the current user's studio_id from studio_members.
-// Assumes a user belongs to exactly one studio; if multiple exist, the
-// earliest-created one is used (first alphabetically by created_at).
-// TODO: add studio-selection UI if multi-studio users are common.
+// If the user belongs to a single studio it is selected automatically.
+// If multiple studios exist a modal selector is shown so the user can pick one.
 async function resolveStudioId(){
   // Check in-memory first
   if(__currentStudioId) return __currentStudioId;
 
   // Check localStorage cache (stored with __originalGetItem/SetItem so it is never synced)
-  // Note: these are defined later in the file but are initialised before this function is called.
   const cached = __originalGetItem(STUDIO_ID_CACHE_KEY);
   if(cached){ __currentStudioId = cached; return cached; }
 
@@ -241,30 +294,120 @@ async function resolveStudioId(){
   if(!userId) return null;
 
   try{
+    // Fetch ALL studios for this user (no limit) so we can offer a selector
     const rows = await supabaseRequest(
-      `/rest/v1/studio_members?select=studio_id,role&user_id=eq.${encodeURIComponent(userId)}&order=created_at.asc&limit=1`
+      `/rest/v1/studio_members?select=studio_id,role&user_id=eq.${encodeURIComponent(userId)}&order=created_at.asc`
     );
-    if(Array.isArray(rows) && rows.length > 0){
-      const studioId = rows[0].studio_id;
-      __currentStudioId = studioId;
-      // Persist in localStorage without triggering sync
-      try{ __originalSetItem(STUDIO_ID_CACHE_KEY, studioId); }catch(e){}
-      // Update auth bar to show studio name (best-effort)
-      try{
-        const studioRows = await supabaseRequest(
-          `/rest/v1/studios?select=name&id=eq.${encodeURIComponent(studioId)}&limit=1`
-        );
-        if(Array.isArray(studioRows) && studioRows.length > 0){
-          const nameEl = document.querySelector('.auth-studio-name');
-          if(nameEl) nameEl.textContent = studioRows[0].name;
-        }
-      }catch(e){}
-      return studioId;
+    if(!Array.isArray(rows) || rows.length === 0) return null;
+
+    let studioId;
+    if(rows.length === 1){
+      studioId = rows[0].studio_id;
+    } else {
+      // Multiple studios — fetch names then show a selector
+      studioId = await showStudioSelector(rows.map(r => r.studio_id));
+      if(!studioId) return null; // user dismissed
     }
+
+    __currentStudioId = studioId;
+    try{ __originalSetItem(STUDIO_ID_CACHE_KEY, studioId); }catch(e){}
+    // Update auth bar studio name label (best-effort)
+    try{
+      const studioRows = await supabaseRequest(
+        `/rest/v1/studios?select=name&id=eq.${encodeURIComponent(studioId)}&limit=1`
+      );
+      if(Array.isArray(studioRows) && studioRows.length > 0){
+        const nameEl = document.querySelector('.auth-studio-name');
+        if(nameEl) nameEl.textContent = studioRows[0].name;
+      }
+    }catch(e){}
+    return studioId;
   }catch(e){
     console.warn('resolveStudioId failed:', e.message || e);
   }
   return null;
+}
+
+// Show a modal that lets the user choose which studio to work in.
+// studioIds — array of studio UUIDs the user belongs to.
+// Returns a Promise<string|null> that resolves with the chosen studio_id,
+// or null if the user dismisses (backdrop click or Escape key).
+async function showStudioSelector(studioIds){
+  // Fetch studio names — UUIDs are safe to join without encoding in PostgREST in() filter
+  let studios = studioIds.map(id=>({ id, name: id }));
+  try{
+    const rows = await supabaseRequest(
+      `/rest/v1/studios?select=id,name&id=in.(${studioIds.join(',')})`
+    );
+    if(Array.isArray(rows)) studios = rows;
+  }catch(e){}
+
+  return new Promise(resolve=>{
+    const existing = document.querySelector('.studio-selector-backdrop');
+    if(existing) existing.remove();
+
+    const headingId = 'studio-selector-heading';
+    const descId    = 'studio-selector-desc';
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop studio-selector-backdrop';
+    backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999';
+
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', headingId);
+    modal.setAttribute('aria-describedby', descId);
+    modal.setAttribute('tabindex', '-1');
+    modal.style.cssText = 'max-width:420px;width:90%;padding:28px;background:#fff;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.2);outline:none';
+    modal.innerHTML = `
+      <h3 id="${headingId}" style="margin:0 0 8px;font-size:1.2rem">Seleccionar estudio</h3>
+      <p id="${descId}" style="margin:0 0 20px;color:#666;font-size:.9rem">Tu cuenta tiene acceso a varios estudios. Elige uno para continuar.</p>
+      <div id="studio-selector-list" style="display:flex;flex-direction:column;gap:10px"></div>
+    `;
+
+    const done = (id)=>{
+      backdrop.remove();
+      document.removeEventListener('keydown', onKeyDown);
+      resolve(id);
+    };
+
+    const onKeyDown = (e)=>{
+      if(e.key === 'Escape'){ e.preventDefault(); done(null); }
+      // Basic focus trap: keep Tab within the modal
+      if(e.key === 'Tab'){
+        const focusable = Array.from(modal.querySelectorAll('button,[href],input,[tabindex]:not([tabindex="-1"])'));
+        if(!focusable.length) return;
+        const first = focusable[0];
+        const last  = focusable[focusable.length - 1];
+        if(e.shiftKey){
+          if(document.activeElement === first){ e.preventDefault(); last.focus(); }
+        } else {
+          if(document.activeElement === last){ e.preventDefault(); first.focus(); }
+        }
+      }
+    };
+
+    const list = modal.querySelector('#studio-selector-list');
+    studios.forEach(s=>{
+      const btn = document.createElement('button');
+      btn.className = 'btn';
+      btn.style.cssText = 'width:100%;text-align:left;padding:12px 16px;font-size:1rem';
+      btn.textContent = s.name || s.id;
+      btn.addEventListener('click', ()=> done(s.id));
+      list.appendChild(btn);
+    });
+
+    // Dismiss on backdrop click (outside the modal)
+    backdrop.addEventListener('click', (e)=>{ if(e.target === backdrop) done(null); });
+    document.addEventListener('keydown', onKeyDown);
+
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+    // Move focus into the modal
+    modal.focus();
+  });
 }
 
 function stopSupabaseAutoSync(){
@@ -338,6 +481,8 @@ function startSupabaseAutoSync(){
   __supabaseSyncTimer = setInterval(pullNow, SUPABASE_SYNC_INTERVAL_MS);
   window.addEventListener('focus', pullNow);
   document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) pullNow(); });
+  // Flush pending writes immediately when connectivity is restored
+  window.addEventListener('online', ()=>{ flushSupabaseWriteQueue().then(()=> pullNow()); });
 
   // Start Realtime subscription alongside polling (polling acts as fallback)
   if(__currentStudioId) startSupabaseRealtime(__currentStudioId);
@@ -622,10 +767,14 @@ function __logAudit(event){
   }
 }
 
-localStorage.setItem = function(key, value){
+// Explicit storage wrappers — replaces the old localStorage.setItem/removeItem
+// monkey-patch which silently fails in Safari (localStorage methods are not
+// writable in all environments).  Call rdsSetItem / rdsRemoveItem everywhere
+// an rds_* key is written so that audit-logging and Supabase queuing always run.
+function rdsSetItem(key, value){
   try{
     if(!__auditWriteGuard && key && key.startsWith('rds_') && key !== AUDIT_KEY && key !== AUTH_SESSION_KEY){
-      const prevRaw = localStorage.getItem(key);
+      const prevRaw = __originalGetItem(key);
       const prev = __safeParseJSON(prevRaw);
       const next = __safeParseJSON(value);
       const op = prevRaw === null ? 'create' : 'update';
@@ -643,13 +792,13 @@ localStorage.setItem = function(key, value){
       queueSupabaseUpsert(key, parsed);
     }
   }catch(e){ /* ignore */ }
-  return __originalSetItem(key, value);
-};
+  __originalSetItem(key, value);
+}
 
-localStorage.removeItem = function(key){
+function rdsRemoveItem(key){
   try{
     if(!__auditWriteGuard && key && key.startsWith('rds_') && key !== AUDIT_KEY && key !== AUTH_SESSION_KEY){
-      const prev = __safeParseJSON(localStorage.getItem(key));
+      const prev = __safeParseJSON(__originalGetItem(key));
       __logAudit({
         ts: new Date().toISOString(),
         op: 'delete',
@@ -663,8 +812,8 @@ localStorage.removeItem = function(key){
       queueSupabaseDelete(key);
     }
   }catch(e){ /* ignore */ }
-  return __originalRemoveItem(key);
-};
+  __originalRemoveItem(key);
+}
 
 // expose loader globally for reuse
 window.loadAuditLog = loadAuditLog;
@@ -683,7 +832,7 @@ function loadArchive(){
   }
 }
 function saveArchive(arr){
-  try{ localStorage.setItem(ARCHIVE_KEY, JSON.stringify(arr)); }catch(e){}
+  try{ rdsSetItem(ARCHIVE_KEY, JSON.stringify(arr)); }catch(e){}
 }
 function addArchiveEntry(type, label, data){
   const arr = loadArchive();
@@ -702,7 +851,7 @@ function addArchiveEntry(type, label, data){
 const NOTES_KEY = 'rds_alumnas_notes_v1';
 
 function loadAlumnasNotes(){ return localStorage.getItem(NOTES_KEY) || ''; }
-function saveAlumnasNotes(txt){ localStorage.setItem(NOTES_KEY, String(txt||'')); }
+function saveAlumnasNotes(txt){ rdsSetItem(NOTES_KEY, String(txt||'')); }
 function getAlumnasNotesKey(monthKey){ return `${NOTES_KEY}_${monthKey}`; }
 function loadAlumnasNotesForMonth(monthKey){
   if(!monthKey) return '';
@@ -710,7 +859,7 @@ function loadAlumnasNotesForMonth(monthKey){
 }
 function saveAlumnasNotesForMonth(monthKey, txt){
   if(!monthKey) return;
-  try{ localStorage.setItem(getAlumnasNotesKey(monthKey), String(txt||'')); }catch(e){}
+  try{ rdsSetItem(getAlumnasNotesKey(monthKey), String(txt||'')); }catch(e){}
 }
 
 /* Rental management storage keys */
@@ -730,10 +879,10 @@ const CHOREO_NOTES_KEY = 'rds_choreo_notes_v1';
 const PACKAGES_KEY = 'rds_packages_v1';
 
 function loadRentalSchedules(){ try{ const raw = localStorage.getItem(RENTAL_SCHEDULES_KEY); return raw ? JSON.parse(raw) : {}; }catch(e){ return {}; } }
-function saveRentalSchedules(obj){ try{ localStorage.setItem(RENTAL_SCHEDULES_KEY, JSON.stringify(obj)); }catch(e){} }
+function saveRentalSchedules(obj){ try{ rdsSetItem(RENTAL_SCHEDULES_KEY, JSON.stringify(obj)); }catch(e){} }
 
 function loadRentalPeople(){ try{ const raw = localStorage.getItem(RENTAL_PEOPLE_KEY); return raw ? JSON.parse(raw) : []; }catch(e){ return []; } }
-function saveRentalPeople(arr){ try{ localStorage.setItem(RENTAL_PEOPLE_KEY, JSON.stringify(arr)); }catch(e){} }
+function saveRentalPeople(arr){ try{ rdsSetItem(RENTAL_PEOPLE_KEY, JSON.stringify(arr)); }catch(e){} }
 
 
 function getRentalNotesKey(monthKey){ return `${RENTAL_NOTES_KEY}_${monthKey}`; }
@@ -743,11 +892,11 @@ function loadRentalNotesForMonth(monthKey){
 }
 function saveRentalNotesForMonth(monthKey, txt){
   if(!monthKey) return;
-  try{ localStorage.setItem(getRentalNotesKey(monthKey), String(txt||'')); }catch(e){}
+  try{ rdsSetItem(getRentalNotesKey(monthKey), String(txt||'')); }catch(e){}
 }
 
 function loadRentalWeeklySchedule(){ try{ const raw = localStorage.getItem(RENTAL_WEEKLY_SCHEDULE_KEY); return raw ? JSON.parse(raw) : {}; }catch(e){ return {}; } }
-function saveRentalWeeklySchedule(obj){ try{ localStorage.setItem(RENTAL_WEEKLY_SCHEDULE_KEY, JSON.stringify(obj)); }catch(e){} }
+function saveRentalWeeklySchedule(obj){ try{ rdsSetItem(RENTAL_WEEKLY_SCHEDULE_KEY, JSON.stringify(obj)); }catch(e){} }
 
 function monthYearKey(date){ const d = new Date(date); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
 
@@ -908,7 +1057,7 @@ function copyPersonSchedulesToClipboard(personId){
   const p = people.find(x => x.id === personId);
   if(!p){ alert('Persona no encontrada para copiar'); return; }
   const clip = { personId: p.id, name: p.name, group: p.group||'', amount: p.amount||0, schedules: p.schedules || [] };
-  try{ localStorage.setItem(RENTAL_CLIP_KEY, JSON.stringify(clip)); alert('Horarios copiados al portapapeles'); }catch(e){ alert('Error al copiar horarios'); }
+  try{ rdsSetItem(RENTAL_CLIP_KEY, JSON.stringify(clip)); alert('Horarios copiados al portapapeles'); }catch(e){ alert('Error al copiar horarios'); }
 }
 
 function pasteSchedulesFromClipboard(targetMonthYear, targetWeekNumber, options){
@@ -944,7 +1093,7 @@ function loadDisciplines(){
 /* Debts (adeudos) storage */
 const DEBT_KEY = 'rds_adeudos_v1';
 function loadDebts(){ try{ const raw = localStorage.getItem(DEBT_KEY); return raw? JSON.parse(raw): []; }catch(e){ return []; } }
-function saveDebts(arr){ localStorage.setItem(DEBT_KEY, JSON.stringify(arr)); }
+function saveDebts(arr){ rdsSetItem(DEBT_KEY, JSON.stringify(arr)); }
 let currentAlumnasMonthKey = '';
 
 function getAlumnasMonthKey(){
@@ -1217,12 +1366,12 @@ function loadDeletedDisciplines(){
   try{ const raw = localStorage.getItem(DELETED_DISC_KEY); return raw? JSON.parse(raw): {}; }catch(e){ return {}; }
 }
 
-function saveDisciplines(arr){ localStorage.setItem(DISC_KEY, JSON.stringify(arr)); updateDisciplineDatalist(); }
+function saveDisciplines(arr){ rdsSetItem(DISC_KEY, JSON.stringify(arr)); updateDisciplineDatalist(); }
 
 function saveDeletedDisciplineRecord(disciplineName, affectedStudents){
   const record = loadDeletedDisciplines();
   record[disciplineName] = { deletedAt: new Date().toISOString(), students: affectedStudents };
-  localStorage.setItem(DELETED_DISC_KEY, JSON.stringify(record));
+  rdsSetItem(DELETED_DISC_KEY, JSON.stringify(record));
 }
 
 function updateDisciplineDatalist(){
@@ -1356,7 +1505,7 @@ function openManageDisciplines(){
             saveStudents(updated);
             // remove record after restore
             delete recordsNow[dname];
-            localStorage.setItem(DELETED_DISC_KEY, JSON.stringify(recordsNow));
+            rdsSetItem(DELETED_DISC_KEY, JSON.stringify(recordsNow));
             alert('Disciplina restaurada');
             renderStudentsTable();
             // refresh deleted records view
@@ -1386,7 +1535,7 @@ function loadStudents(){
 }
 
 function saveStudents(arr){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+  rdsSetItem(STORAGE_KEY, JSON.stringify(arr));
 }
 
 function sortStudents(a,b){
@@ -1626,7 +1775,7 @@ function openStudentModal(id){
       const raw = localStorage.getItem(STUDENT_UI_KEY);
       const obj = raw ? JSON.parse(raw) : {};
       obj[s.id] = { ...(obj[s.id]||{}), ...updates };
-      localStorage.setItem(STUDENT_UI_KEY, JSON.stringify(obj));
+      rdsSetItem(STUDENT_UI_KEY, JSON.stringify(obj));
     }catch(e){}
   };
   const uiState = loadStudentUIState();
@@ -2280,7 +2429,7 @@ function initAlumnasPage(){
       toggleDebtsBtn.addEventListener('click', ()=>{
         const isExpanded = debtsBlock.classList.toggle('expanded');
         toggleDebtsBtn.classList.toggle('expanded');
-        try{ localStorage.setItem(DEBTS_STATE_KEY, isExpanded? '1':'0'); }catch(e){}
+        try{ rdsSetItem(DEBTS_STATE_KEY, isExpanded? '1':'0'); }catch(e){}
         // set aria-expanded for accessibility
         try{ toggleDebtsBtn.setAttribute('aria-expanded', isExpanded ? 'true' : 'false'); }catch(e){}
         if(isExpanded){
@@ -2381,7 +2530,7 @@ function loadCalendar(){
   try{ const raw = localStorage.getItem(CAL_KEY); return raw? JSON.parse(raw): {}; }catch(e){return {} }
 }
 
-function saveCalendar(obj){ localStorage.setItem(CAL_KEY, JSON.stringify(obj)); try{ syncMonthlyCalendarFromAllSourcesIfNeeded(); }catch(e){} }
+function saveCalendar(obj){ rdsSetItem(CAL_KEY, JSON.stringify(obj)); try{ syncMonthlyCalendarFromAllSourcesIfNeeded(); }catch(e){} }
 
 function initMiniCalendar(){
   const calWrap = document.getElementById('mini-calendar');
@@ -2469,7 +2618,7 @@ function initMiniCalendar(){
         return;
       }
       try{
-        localStorage.setItem('rds_calendar_clipboard', JSON.stringify(store[key].days));
+        rdsSetItem('rds_calendar_clipboard', JSON.stringify(store[key].days));
         alert('📋 Calendario copiado');
       }catch(e){
         alert('Error al copiar');
@@ -2541,7 +2690,7 @@ function initMiniCalendar(){
 function copyWeeklyToClipboard(){
   const items = (typeof loadWeeklySchedules === 'function') ? loadWeeklySchedules() : [];
   try{
-    localStorage.setItem(WEEKLY_CLIP_KEY, JSON.stringify({when: Date.now(), items}));
+    rdsSetItem(WEEKLY_CLIP_KEY, JSON.stringify({when: Date.now(), items}));
     alert('Horario semanal copiado');
   }catch(e){
     alert('Error al copiar horario');
@@ -2744,7 +2893,7 @@ function addCalendarEvent(dateString, text){
 const ATT_KEY = 'rds_attendance_v1';
 
 function loadAttendance(){ try{ const raw = localStorage.getItem(ATT_KEY); return raw? JSON.parse(raw): {}; }catch(e){ return {}; } }
-function saveAttendance(obj){ try{ localStorage.setItem(ATT_KEY, JSON.stringify(obj)); }catch(e){}
+function saveAttendance(obj){ try{ rdsSetItem(ATT_KEY, JSON.stringify(obj)); }catch(e){}
 }
 
 function renderDisciplineTabs(container){
@@ -3611,7 +3760,7 @@ function initRentasPage(){
   if(clearExpensesBtn){
     clearExpensesBtn.addEventListener('click', ()=>{
       if(!confirm('Esto eliminará los datos antiguos de gastos. ¿Continuar?')) return;
-      localStorage.removeItem('rds_rental_expenses_v1');
+      rdsRemoveItem('rds_rental_expenses_v1');
       alert('Datos antiguos de gastos eliminados');
     });
   }
@@ -4015,7 +4164,7 @@ function initRentasPage(){
         return;
       }
       try{
-        localStorage.setItem('rds_rental_schedule_clipboard', JSON.stringify(schedules));
+        rdsSetItem('rds_rental_schedule_clipboard', JSON.stringify(schedules));
         alert(`📋 ${schedules.length} horarios copiados al portapapeles`);
       }catch(e){
         alert('Error al copiar horarios');
@@ -4624,11 +4773,11 @@ function initExportPage(){
 
 // Load/Save XV Años
 function loadXVQuinceaneras(){ try{ const raw = localStorage.getItem(XV_KEY); return raw ? JSON.parse(raw) : []; }catch(e){ return []; } }
-function saveXVQuinceaneras(arr){ try{ localStorage.setItem(XV_KEY, JSON.stringify(arr)); }catch(e){} }
+function saveXVQuinceaneras(arr){ try{ rdsSetItem(XV_KEY, JSON.stringify(arr)); }catch(e){} }
 
 // Load/Save XV Calendar
 function loadXVCalendar(){ try{ const raw = localStorage.getItem(XV_CAL_KEY); return raw ? JSON.parse(raw) : {}; }catch(e){ return {}; } }
-function saveXVCalendar(obj){ try{ localStorage.setItem(XV_CAL_KEY, JSON.stringify(obj)); syncMonthlyCalendarFromAllSourcesIfNeeded(); }catch(e){} }
+function saveXVCalendar(obj){ try{ rdsSetItem(XV_CAL_KEY, JSON.stringify(obj)); syncMonthlyCalendarFromAllSourcesIfNeeded(); }catch(e){} }
 
 // Load/Save XV Notes (month-scoped)
 function getXVNotesKey(monthKey){ return `${XV_NOTES_KEY}_${monthKey}`; }
@@ -4638,16 +4787,16 @@ function loadXVNotesForMonth(monthKey){
 }
 function saveXVNotesForMonth(monthKey, txt){
   if(!monthKey) return;
-  try{ localStorage.setItem(getXVNotesKey(monthKey), String(txt||'')); }catch(e){} }
+  try{ rdsSetItem(getXVNotesKey(monthKey), String(txt||'')); }catch(e){} }
 
 
 // Load/Save Choreographies
 function loadChoreographies(){ try{ const raw = localStorage.getItem(CHOREO_KEY); return raw ? JSON.parse(raw) : []; }catch(e){ return []; } }
-function saveChoreographies(arr){ try{ localStorage.setItem(CHOREO_KEY, JSON.stringify(arr)); }catch(e){} }
+function saveChoreographies(arr){ try{ rdsSetItem(CHOREO_KEY, JSON.stringify(arr)); }catch(e){} }
 
 // Load/Save Choreo Calendar
 function loadChoreoCalendar(){ try{ const raw = localStorage.getItem(CHOREO_CAL_KEY); return raw ? JSON.parse(raw) : {}; }catch(e){ return {}; } }
-function saveChoreoCalendar(obj){ try{ localStorage.setItem(CHOREO_CAL_KEY, JSON.stringify(obj)); syncMonthlyCalendarFromAllSourcesIfNeeded(); }catch(e){} }
+function saveChoreoCalendar(obj){ try{ rdsSetItem(CHOREO_CAL_KEY, JSON.stringify(obj)); syncMonthlyCalendarFromAllSourcesIfNeeded(); }catch(e){} }
 
 // Load/Save Choreo Notes (month-scoped)
 function getChoreoNotesKey(monthKey){ return `${CHOREO_NOTES_KEY}_${monthKey}`; }
@@ -4657,7 +4806,7 @@ function loadChoreoNotesForMonth(monthKey){
 }
 function saveChoreoNotesForMonth(monthKey, txt){
   if(!monthKey) return;
-  try{ localStorage.setItem(getChoreoNotesKey(monthKey), String(txt||'')); }catch(e){} }
+  try{ rdsSetItem(getChoreoNotesKey(monthKey), String(txt||'')); }catch(e){} }
 
 
 // Load/Save Packages (objects with details)
@@ -4681,7 +4830,7 @@ function loadPackages(){
   }
 }
 function savePackages(arr){
-  try{ localStorage.setItem(PACKAGES_KEY, JSON.stringify(normalizePackages(arr))); }catch(e){}
+  try{ rdsSetItem(PACKAGES_KEY, JSON.stringify(normalizePackages(arr))); }catch(e){}
 }
 
 // XV Quinceañera management
@@ -5363,7 +5512,7 @@ function initXVCalendar(){
         return;
       }
       try{
-        localStorage.setItem('rds_xv_calendar_clipboard', JSON.stringify(store[key].days));
+        rdsSetItem('rds_xv_calendar_clipboard', JSON.stringify(store[key].days));
         alert('📋 XV Calendario copiado');
       }catch(e){
         alert('Error al copiar');
@@ -6127,7 +6276,7 @@ function initChoreoCalendar(){
         return;
       }
       try{
-        localStorage.setItem('rds_choreo_calendar_clipboard', JSON.stringify(store[key].days));
+        rdsSetItem('rds_choreo_calendar_clipboard', JSON.stringify(store[key].days));
         alert('📋 Choreo Calendario copiado');
       }catch(e){
         alert('Error al copiar');
@@ -6748,7 +6897,7 @@ function loadWeeklySchedules(){
 
 function saveWeeklySchedules(schedules){
   try {
-    localStorage.setItem(WEEKLY_SCHEDULES_KEY, JSON.stringify(schedules));
+    rdsSetItem(WEEKLY_SCHEDULES_KEY, JSON.stringify(schedules));
   } catch(e) {
     console.error('Error saving weekly schedules:', e);
   }
@@ -6760,7 +6909,7 @@ function loadMainCalendar(){
 }
 
 function saveMainCalendar(store){
-  localStorage.setItem(MAIN_CAL_KEY, JSON.stringify(store));
+  rdsSetItem(MAIN_CAL_KEY, JSON.stringify(store));
 }
 
 function mainMonthKeyFromDate(d){
@@ -7637,7 +7786,7 @@ function saveSimpleSchedule(monthKey, schedules){
   try {
     const allSchedules = loadSimpleSchedule();
     allSchedules[monthKey] = schedules;
-    localStorage.setItem(SIMPLE_SCHEDULE_KEY, JSON.stringify(allSchedules));
+    rdsSetItem(SIMPLE_SCHEDULE_KEY, JSON.stringify(allSchedules));
   } catch(e) {
     console.error('Error saving simple schedule:', e);
   }
@@ -7663,7 +7812,7 @@ function saveExtraSchedule(monthKey, schedules){
   try {
     const allSchedules = loadExtraSchedule();
     allSchedules[monthKey] = schedules;
-    localStorage.setItem(SIMPLE_SCHEDULE_EXTRA_KEY, JSON.stringify(allSchedules));
+    rdsSetItem(SIMPLE_SCHEDULE_EXTRA_KEY, JSON.stringify(allSchedules));
   } catch(e) {
     console.error('Error saving extra schedule:', e);
   }
@@ -8256,7 +8405,7 @@ function loadMonthlyCalendar(){
 
 function saveMonthlyCalendar(data){
   try{
-    localStorage.setItem(MONTHLY_CALENDAR_KEY, JSON.stringify(data));
+    rdsSetItem(MONTHLY_CALENDAR_KEY, JSON.stringify(data));
   }catch(e){}
 }
 
@@ -8593,7 +8742,7 @@ function initFullCalendarioPage(){
   document.getElementById('cal-prev-month').addEventListener('click', () => {
     const remindersTextarea = document.getElementById('reminders-text');
     if(remindersTextarea){
-      localStorage.setItem(`rds_reminders_${currentMonthKey}`, remindersTextarea.value);
+      rdsSetItem(`rds_reminders_${currentMonthKey}`, remindersTextarea.value);
     }
     navigatePreviousMonth();
   });
@@ -8601,7 +8750,7 @@ function initFullCalendarioPage(){
   document.getElementById('cal-next-month').addEventListener('click', () => {
     const remindersTextarea = document.getElementById('reminders-text');
     if(remindersTextarea){
-      localStorage.setItem(`rds_reminders_${currentMonthKey}`, remindersTextarea.value);
+      rdsSetItem(`rds_reminders_${currentMonthKey}`, remindersTextarea.value);
     }
     navigateNextMonth();
   });
@@ -8618,7 +8767,7 @@ function initFullCalendarioPage(){
         return;
       }
       try{
-        localStorage.setItem('rds_calendar_clipboard', JSON.stringify(monthData.notes));
+        rdsSetItem('rds_calendar_clipboard', JSON.stringify(monthData.notes));
         alert('📋 Calendario copiado');
       }catch(e){
         alert('Error al copiar calendario');
@@ -9066,7 +9215,7 @@ function initFullCalendarioPage(){
         return;
       }
       try{
-        localStorage.setItem('rds_simple_schedule_clipboard', JSON.stringify(monthSchedules));
+        rdsSetItem('rds_simple_schedule_clipboard', JSON.stringify(monthSchedules));
         alert(`📋 ${monthSchedules.length} horarios copiados al portapapeles`);
       }catch(e){
         alert('Error al copiar horarios');
@@ -9133,14 +9282,14 @@ function initFullCalendarioPage(){
     loadRemindersForMonth();
 
     remindersSaveBtn.addEventListener('click', () => {
-      localStorage.setItem(getRemindersKey(), remindersTextarea.value);
+      rdsSetItem(getRemindersKey(), remindersTextarea.value);
       alert('💾 Recordatorios guardados');
     });
 
     remindersClearBtn.addEventListener('click', () => {
       if(!confirm('¿Limpiar todos los recordatorios de este mes?')) return;
       remindersTextarea.value = '';
-      localStorage.removeItem(getRemindersKey());
+      rdsRemoveItem(getRemindersKey());
       alert('🗑️ Recordatorios eliminados');
     });
   }
@@ -9311,7 +9460,7 @@ function loadHistory(){
 
 function saveHistory(records){
   try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(records));
+    rdsSetItem(HISTORY_KEY, JSON.stringify(records));
   } catch(e) {
     console.error('Error saving history:', e);
   }
@@ -9329,7 +9478,7 @@ function loadTeachers(){
 
 function saveTeachers(teachers){
   try {
-    localStorage.setItem(TEACHERS_KEY, JSON.stringify(teachers));
+    rdsSetItem(TEACHERS_KEY, JSON.stringify(teachers));
   } catch(e) {
     console.error('Error saving teachers:', e);
   }
@@ -9983,9 +10132,19 @@ function initBackupPage(){
             return;
           }
           if(!confirm('Esto reemplazará la información actual. ¿Deseas continuar?')) return;
+          // Preserve auth session across restore
+          const savedSession = __originalGetItem(AUTH_SESSION_KEY);
+          const savedStudio  = __originalGetItem(STUDIO_ID_CACHE_KEY);
           localStorage.clear();
+          if(savedSession) __originalSetItem(AUTH_SESSION_KEY, savedSession);
+          if(savedStudio)  __originalSetItem(STUDIO_ID_CACHE_KEY, savedStudio);
           Object.keys(data.storage).forEach(key=>{
-            localStorage.setItem(key, data.storage[key]);
+            if(key === AUTH_SESSION_KEY || key === STUDIO_ID_CACHE_KEY) return;
+            if(key.startsWith('rds_')){
+              rdsSetItem(key, data.storage[key]);
+            } else {
+              __originalSetItem(key, data.storage[key]);
+            }
           });
           alert('Respaldo importado correctamente. Recarga la página para ver los cambios.');
         } catch (err){
