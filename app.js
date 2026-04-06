@@ -1090,6 +1090,26 @@ function loadDisciplines(){
   try{ const raw = localStorage.getItem(DISC_KEY); return raw? JSON.parse(raw): ['Ballet Kids','Gimnasia Kids','Baile Moderno','K-pop I','K-pop II','Jazz','Gimnasia','Ballet','Heels']; }catch(e){ return ['Ballet Kids','Gimnasia Kids','Baile Moderno','K-pop I','K-pop II','Jazz','Gimnasia','Ballet','Heels']; }
 }
 
+/* Standalone payments (payments not tied to a student record) */
+const STANDALONE_PAYMENTS_KEY = 'rds_standalone_payments_v1';
+function loadStandalonePayments(){ try{ const raw = localStorage.getItem(STANDALONE_PAYMENTS_KEY); return raw? JSON.parse(raw): []; }catch(e){ return []; } }
+function saveStandalonePayments(arr){ rdsSetItem(STANDALONE_PAYMENTS_KEY, JSON.stringify(arr)); }
+function addStandalonePayment(name, disciplines, amount, paid, date){
+  const arr = loadStandalonePayments();
+  const entry = { id: `pay-${Date.now()}-${Math.random().toString(36).slice(2,6)}`, name, disciplines: disciplines||'', amount, paid: !!paid, date };
+  arr.push(entry);
+  saveStandalonePayments(arr);
+  return entry.id;
+}
+function deleteStandalonePayment(id){
+  const arr = loadStandalonePayments().filter(p=> p.id !== id);
+  saveStandalonePayments(arr);
+}
+function updateStandalonePayment(id, updates){
+  const arr = loadStandalonePayments().map(p=> p.id===id ? {...p, ...updates} : p);
+  saveStandalonePayments(arr);
+}
+
 /* Debts (adeudos) storage */
 const DEBT_KEY = 'rds_adeudos_v1';
 function loadDebts(){ try{ const raw = localStorage.getItem(DEBT_KEY); return raw? JSON.parse(raw): []; }catch(e){ return []; } }
@@ -1236,17 +1256,31 @@ function renderMonthlyPaymentsList(){
   if(!tbody || !label) return;
   const monthKey = getAlumnasMonthKey();
   label.textContent = formatDebtMonthLabel(monthKey);
+
+  // Update table header to include Acciones column (if not already present)
+  const thead = tbody.closest('table')?.querySelector('thead tr');
+  if(thead && !thead.querySelector('th.pay-actions-th')){
+    const th = document.createElement('th');
+    th.className = 'pay-actions-th';
+    th.textContent = 'Acciones';
+    thead.appendChild(th);
+  }
+
+  // Build rows from student payments (all students, including soft-deleted ones - payments persist)
   const students = loadStudents();
   const rows = [];
   students.forEach(s => {
     const payments = (s.personal && Array.isArray(s.personal.payments)) ? s.personal.payments : [];
-    payments.forEach(p => {
+    payments.forEach((p, pIdx) => {
       if(!p.date || !/^\d{4}-\d{2}/.test(p.date)) return;
       if(p.date.slice(0,7) !== monthKey) return;
       const disciplines = Array.isArray(s.disciplines)
-        ? s.disciplines.map(d => d.name).filter(Boolean).join('<br>')
+        ? s.disciplines.map(d => d.name).filter(Boolean).join(', ')
         : '';
       rows.push({
+        _src: 'student',
+        _studentId: s.id,
+        _payIdx: pIdx,
         date: p.date,
         name: s.name || '',
         disciplines,
@@ -1255,12 +1289,28 @@ function renderMonthlyPaymentsList(){
       });
     });
   });
+
+  // Add standalone payments for this month
+  loadStandalonePayments().forEach(p => {
+    if(!p.date || !/^\d{4}-\d{2}/.test(p.date)) return;
+    if(p.date.slice(0,7) !== monthKey) return;
+    rows.push({
+      _src: 'standalone',
+      _id: p.id,
+      date: p.date,
+      name: p.name || '',
+      disciplines: p.disciplines || '',
+      amount: p.amount || 0,
+      paid: !!p.paid
+    });
+  });
+
   rows.sort((a,b)=> (b.date||'').localeCompare(a.date||''));
   tbody.innerHTML = '';
   if(rows.length === 0){
     const tr = document.createElement('tr');
     const td = document.createElement('td');
-    td.colSpan = 5;
+    td.colSpan = 6;
     td.style.textAlign = 'center';
     td.style.padding = '1rem';
     td.style.color = '#666';
@@ -1274,12 +1324,122 @@ function renderMonthlyPaymentsList(){
     tr.innerHTML = `
       <td>${escapeHtml(r.date)}</td>
       <td>${escapeHtml(r.name)}</td>
-      <td>${r.disciplines || ''}</td>
+      <td>${escapeHtml(r.disciplines || '')}</td>
       <td>${escapeHtml(String(r.amount))}</td>
       <td>${r.paid ? 'Sí' : 'No'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-secondary pay-edit-btn" style="padding:4px 8px;font-size:12px">✏️</button>
+        <button class="btn pay-del-btn" style="background:#ff4444;padding:4px 8px;font-size:12px">🗑️</button>
+      </td>
     `;
+    const editBtn = tr.querySelector('.pay-edit-btn');
+    const delBtn = tr.querySelector('.pay-del-btn');
+
+    if(r._src === 'standalone'){
+      editBtn.addEventListener('click', ()=> openEditPaymentModal(r, null, null));
+      delBtn.addEventListener('click', ()=>{
+        if(!confirm('¿Eliminar este pago?')) return;
+        deleteStandalonePayment(r._id);
+        renderMonthlyPaymentsList();
+      });
+    } else {
+      editBtn.addEventListener('click', ()=> openEditPaymentModal(r, r._studentId, r._payIdx));
+      delBtn.addEventListener('click', ()=>{
+        if(!confirm('¿Eliminar este pago?')) return;
+        const allStudents = loadStudents();
+        const st = allStudents.find(x=> x.id === r._studentId);
+        if(st && st.personal && Array.isArray(st.personal.payments)){
+          st.personal.payments.splice(r._payIdx, 1);
+          saveStudents(allStudents);
+        }
+        renderMonthlyPaymentsList();
+      });
+    }
     tbody.appendChild(tr);
   });
+}
+
+function openEditPaymentModal(row, studentId, payIdx){
+  const existing = document.querySelector('.modal-backdrop'); if(existing) existing.remove();
+  const backdrop = document.createElement('div'); backdrop.className='modal-backdrop';
+  const modal = document.createElement('div'); modal.className='modal'; modal.style.maxWidth='440px';
+  const disciplines = loadDisciplines();
+  const discOptions = disciplines.map(d=>`<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+  modal.innerHTML = `
+    <h3>Editar Pago</h3>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px">
+      <div><label style="font-weight:700">Nombre</label><input id="ep-name" class="input" value="${escapeHtml(row.name)}" ${studentId !== null ? 'readonly style="background:#f9f9f9"' : ''}/></div>
+      <div><label style="font-weight:700">Disciplinas</label><input id="ep-disciplines" class="input" value="${escapeHtml(row.disciplines||'')}" list="ep-disc-list" /><datalist id="ep-disc-list">${discOptions}</datalist></div>
+      <div><label style="font-weight:700">Monto</label><input id="ep-amount" class="input" type="number" value="${escapeHtml(String(row.amount||''))}" /></div>
+      <div><label style="font-weight:700">Fecha</label><input id="ep-date" class="input" type="date" value="${escapeHtml(row.date||'')}" /></div>
+      <div><label style="display:flex;align-items:center;gap:8px;font-weight:700"><input type="checkbox" id="ep-paid" ${row.paid?'checked':''}/> Pagó</label></div>
+    </div>
+    <div style="text-align:right;margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+      <button id="ep-cancel" class="btn btn-secondary">Cancelar</button>
+      <button id="ep-save" class="btn">Guardar</button>
+    </div>
+  `;
+  backdrop.appendChild(modal); document.body.appendChild(backdrop);
+  document.getElementById('ep-cancel').addEventListener('click', ()=> backdrop.remove());
+  document.getElementById('ep-save').addEventListener('click', ()=>{
+    const name = document.getElementById('ep-name').value.trim();
+    const disciplines = document.getElementById('ep-disciplines').value.trim();
+    const amount = Number(document.getElementById('ep-amount').value) || 0;
+    const date = document.getElementById('ep-date').value;
+    const paid = document.getElementById('ep-paid').checked;
+    if(!name){ alert('El nombre es requerido'); return; }
+    if(studentId !== null && payIdx !== null){
+      // update student payment
+      const allStudents = loadStudents();
+      const st = allStudents.find(x=> x.id === studentId);
+      if(st && st.personal && Array.isArray(st.personal.payments) && st.personal.payments[payIdx]){
+        Object.assign(st.personal.payments[payIdx], {amount, date, paid});
+        saveStudents(allStudents);
+      }
+    } else {
+      // update standalone payment
+      updateStandalonePayment(row._id, {name, disciplines, amount, date, paid});
+    }
+    backdrop.remove();
+    renderMonthlyPaymentsList();
+  });
+}
+
+function openAddStandalonePaymentModal(){
+  const existing = document.querySelector('.modal-backdrop'); if(existing) existing.remove();
+  const backdrop = document.createElement('div'); backdrop.className='modal-backdrop';
+  const modal = document.createElement('div'); modal.className='modal'; modal.style.maxWidth='440px';
+  const disciplines = loadDisciplines();
+  const discOptions = disciplines.map(d=>`<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+  const today = new Date(); const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  modal.innerHTML = `
+    <h3>➕ Agregar Pago</h3>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px">
+      <div><label style="font-weight:700">Nombre *</label><input id="np-name" class="input" placeholder="Nombre de la alumna" /></div>
+      <div><label style="font-weight:700">Disciplinas</label><input id="np-disciplines" class="input" placeholder="Disciplina(s)" list="np-disc-list" /><datalist id="np-disc-list">${discOptions}</datalist></div>
+      <div><label style="font-weight:700">Monto</label><input id="np-amount" class="input" type="number" placeholder="0" /></div>
+      <div><label style="font-weight:700">Fecha</label><input id="np-date" class="input" type="date" value="${todayStr}" /></div>
+      <div><label style="display:flex;align-items:center;gap:8px;font-weight:700"><input type="checkbox" id="np-paid" checked/> Pagó</label></div>
+    </div>
+    <div style="text-align:right;margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+      <button id="np-cancel" class="btn btn-secondary">Cancelar</button>
+      <button id="np-save" class="btn">Guardar</button>
+    </div>
+  `;
+  backdrop.appendChild(modal); document.body.appendChild(backdrop);
+  document.getElementById('np-cancel').addEventListener('click', ()=> backdrop.remove());
+  document.getElementById('np-save').addEventListener('click', ()=>{
+    const name = document.getElementById('np-name').value.trim();
+    const disciplines = document.getElementById('np-disciplines').value.trim();
+    const amount = Number(document.getElementById('np-amount').value) || 0;
+    const date = document.getElementById('np-date').value;
+    const paid = document.getElementById('np-paid').checked;
+    if(!name){ alert('El nombre es requerido'); return; }
+    addStandalonePayment(name, disciplines, amount, paid, date);
+    backdrop.remove();
+    renderMonthlyPaymentsList();
+  });
+  setTimeout(()=> document.getElementById('np-name').focus(), 100);
 }
 
 // Floating scroll controls for debts table
@@ -1354,7 +1514,9 @@ function refreshDebtStudentOptions(){
   try{
     const sel = document.getElementById('debt-student'); if(!sel) return;
     const cur = sel.value;
-    const students = loadStudents().sort(sortStudents);
+    const currentMonth = getAlumnasMonthKey();
+    // Only show students active in the current month
+    const students = loadStudents().filter(s=> isStudentActiveForMonth(s, currentMonth)).sort(sortStudents);
     sel.innerHTML = '<option value="">-- Selecciona alumna --</option>';
     students.forEach(s=>{ const opt = document.createElement('option'); opt.value = s.id; opt.textContent = s.name; sel.appendChild(opt); });
     // try to restore previous selection when possible
@@ -1424,6 +1586,8 @@ function openManageDisciplines(){
           const arr = loadDisciplines(); const old = arr[idx]; arr[idx] = newName.trim(); saveDisciplines(arr);
           // propagate rename to students
           const students = loadStudents().map(s=>{ s.disciplines = s.disciplines.map(d=> d.name===old ? {...d, name:newName.trim()} : d); return s; }); saveStudents(students); renderStudentsTable(); renderList();
+          // refresh attendance discipline tabs if on attendance page
+          try{ const tabsWrap = document.getElementById('discipline-tabs'); if(tabsWrap){ renderDisciplineTabs(tabsWrap); renderAttendanceTable(); } }catch(ex){}
         }
       } else if(action==='delete'){
         if(!confirm('Eliminar disciplina y eliminarla de todas las alumnas?')) return;
@@ -1441,6 +1605,8 @@ function openManageDisciplines(){
         saveDisciplines(arr);
         renderStudentsTable();
         renderList();
+        // refresh attendance discipline tabs if on attendance page
+        try{ const tabsWrap = document.getElementById('discipline-tabs'); if(tabsWrap){ renderDisciplineTabs(tabsWrap); renderAttendanceTable(); } }catch(ex){}
       }
     }));
   }
@@ -1542,10 +1708,22 @@ function sortStudents(a,b){
   return a.name.localeCompare(b.name, 'es', {sensitivity:'base'});
 }
 
+function isStudentActiveForMonth(s, monthKey){
+  // if no enrolledSince set, treat as always active (legacy data)
+  if(s.enrolledSince && s.enrolledSince > monthKey) return false;
+  // if soft-deleted (activeUntil set), only show if monthKey <= activeUntil
+  if(s.activeUntil && monthKey > s.activeUntil) return false;
+  return true;
+}
+
 function renderStudentsTable(filterType='', filterDiscipline=''){
   const tbody = document.querySelector('#alumnas-tbody');
   if(!tbody) return;
+  const currentMonth = getAlumnasMonthKey();
   let students = loadStudents().sort(sortStudents);
+
+  // filter by active month (monthly snapshot)
+  students = students.filter(s=> isStudentActiveForMonth(s, currentMonth));
   
   // filter by type
   if(filterType) { students = students.filter(s=> s.type === filterType); }
@@ -1569,15 +1747,17 @@ function renderStudentsTable(filterType='', filterDiscipline=''){
       schedText = s.disciplines.map(d=>d.schedule).filter(Boolean).join(' • ');
       amountText = formatAmount(totalAmount(s));
     }
+
+    const inactiveBadge = s.activeUntil ? ` <span style="font-size:10px;background:#ffdddd;color:#cc0000;border-radius:4px;padding:1px 4px">Inactiva desde ${s.activeUntil}</span>` : '';
     
     tr.innerHTML = `
-      <td>${s.type}</td>
-      <td><a href="#" class="student-link" data-id="${s.id}">${escapeHtml(s.name)}</a></td>
+      <td>${escapeHtml(s.type)}</td>
+      <td><a href="#" class="student-link" data-id="${s.id}">${escapeHtml(s.name)}</a>${inactiveBadge}</td>
       <td>${escapeHtml(s.disciplines.map(d=>d.name).join(', '))}</td>
       <td>${escapeHtml(schedText)}</td>
       <td>${amountText}</td>
       <td><input type="checkbox" data-id="${s.id}" class="paid-checkbox" ${s.paid? 'checked':''}></td>
-      <td><button class="btn btn-secondary delete-btn" data-id="${s.id}">🗑️</button></td>
+      <td><button class="btn btn-secondary delete-btn" data-id="${s.id}" title="${s.activeUntil ? 'Gestionar alumna' : 'Marcar inactiva / eliminar'}">${s.activeUntil ? '🔄' : '🗑️'}</button></td>
     `;
     tbody.appendChild(tr);
   });
@@ -1590,7 +1770,7 @@ function renderStudentsTable(filterType='', filterDiscipline=''){
     const id = cb.dataset.id; togglePaid(id, cb.checked);
   }));
   document.querySelectorAll('.delete-btn').forEach(b=>b.addEventListener('click', e=>{
-    if(confirm('Eliminar registro?')){ deleteStudent(b.dataset.id); }
+    deleteStudent(b.dataset.id);
   }));
 }
 
@@ -1626,7 +1806,7 @@ function addStudentFromForm(ev){
 
   const paid = document.querySelector('#input-paid').checked;
   const students = loadStudents();
-  students.push({id:Date.now().toString(),type,name,disciplines,paid,personal:{}});
+  students.push({id:Date.now().toString(),type,name,disciplines,paid,personal:{},enrolledSince:getAlumnasMonthKey()});
   saveStudents(students);
   
   // close modal if exists
@@ -1743,9 +1923,40 @@ function openAddStudentModal(){
 function deleteStudent(id){
   const all = loadStudents();
   const toDelete = all.find(s=> s.id === id);
-  if(toDelete){ addArchiveEntry('Alumna', toDelete.name || '', toDelete); }
-  const arr = all.filter(s=>s.id !== id);
-  saveStudents(arr); renderStudentsTable();
+  if(!toDelete) return;
+
+  const currentMonth = getAlumnasMonthKey();
+  const monthLabel = formatDebtMonthLabel(currentMonth);
+
+  if(toDelete.activeUntil){
+    // Already inactive — offer reactivation or permanent delete
+    const action = confirm(
+      `"${toDelete.name}" ya está inactiva desde ${formatDebtMonthLabel(toDelete.activeUntil)}.\n\n` +
+      `• ACEPTAR: reactivar esta alumna (volver a mostrarla en el mes actual)\n` +
+      `• CANCELAR: mantener como está`
+    );
+    if(!action) return;
+    // Reactivate: remove activeUntil
+    const updated = all.map(s=> s.id===id ? {...s, activeUntil: undefined} : s);
+    saveStudents(updated);
+    renderStudentsTable();
+    return;
+  }
+
+  // Soft-delete: mark as inactive from current month, keep the student in the array
+  const choice = confirm(
+    `¿Marcar a "${toDelete.name}" como INACTIVA a partir de ${monthLabel}?\n\n` +
+    `Sus pagos y registros anteriores se conservarán en los meses anteriores.\n\n` +
+    `• ACEPTAR: marcar inactiva desde ${monthLabel}\n` +
+    `• CANCELAR: no hacer nada`
+  );
+  if(!choice) return;
+
+  const updated = all.map(s=> s.id===id ? {...s, activeUntil: currentMonth} : s);
+  saveStudents(updated);
+  addArchiveEntry('Alumna-Inactiva', toDelete.name || '', {...toDelete, activeUntil: currentMonth});
+
+  renderStudentsTable();
   try{ if(typeof refreshDebtStudentOptions === 'function') refreshDebtStudentOptions(); }catch(e){}
   try{ if(typeof refreshAttendanceStudentList === 'function') refreshAttendanceStudentList(); }catch(e){}
 }
@@ -1785,6 +1996,21 @@ function openStudentModal(id){
   const modal = document.createElement('div'); modal.className='modal';
   modal.innerHTML = `
     <h3>Información Personal — ${escapeHtml(s.name)}</h3>
+    <div style="margin-bottom:12px;padding:10px;background:rgba(237,70,143,0.05);border-radius:8px;display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+      <div>
+        <label style="font-weight:700;color:var(--pink);display:block;margin-bottom:4px">Tipo de alumna</label>
+        <select class="input" id="m-type" style="min-width:160px">
+          <option value="Inscrito" ${s.type==='Inscrito'?'selected':''}>Inscrito</option>
+          <option value="Clase Muestra" ${s.type==='Clase Muestra'?'selected':''}>Clase Muestra</option>
+          <option value="Clase Suelta" ${s.type==='Clase Suelta'?'selected':''}>Clase Suelta</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-weight:700;color:var(--pink);display:block;margin-bottom:4px">Inscrita desde</label>
+        <span style="font-size:13px;color:var(--muted)">${s.enrolledSince ? escapeHtml(s.enrolledSince) : '(anterior)'}</span>
+      </div>
+      ${s.activeUntil ? `<div><label style="font-weight:700;color:#cc0000;display:block;margin-bottom:4px">Inactiva desde</label><span style="font-size:13px;color:#cc0000">${escapeHtml(s.activeUntil)}</span></div>` : ''}
+    </div>
     <section>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div>
@@ -2003,6 +2229,7 @@ function openStudentModal(id){
       if(name) newDisciplines.push({name, schedule: sched, amount: amt});
     });
     s.disciplines = newDisciplines;
+    s.type = document.getElementById('m-type').value || s.type;
     s.personal = {
       dob: document.getElementById('m-dob').value,
       age: document.getElementById('m-age').value,
@@ -2266,6 +2493,10 @@ function initAlumnasPage(){
     // disciplines datalist and manager
     updateDisciplineDatalist();
     const editBtn = document.getElementById('edit-disciplines-btn'); if(editBtn) editBtn.addEventListener('click', openManageDisciplines);
+
+    // "Agregar Pago" button (standalone payment without student record)
+    const addPayBtn = document.getElementById('add-payment-btn');
+    if(addPayBtn) addPayBtn.addEventListener('click', ()=> openAddStandalonePaymentModal());
     
     // Type tabs filtering
     let currentTypeFilter = '';
@@ -2311,7 +2542,11 @@ function initAlumnasPage(){
     function applyFilters(){
       const tbody = document.querySelector('#alumnas-tbody');
       if(!tbody) return;
+      const currentMonth = getAlumnasMonthKey();
       let students = loadStudents().sort(sortStudents);
+
+      // filter by active month (monthly snapshot)
+      students = students.filter(s=> isStudentActiveForMonth(s, currentMonth));
       
       // filter by type
       if(currentTypeFilter) { students = students.filter(s=> s.type === currentTypeFilter); }
@@ -2344,15 +2579,17 @@ function initAlumnasPage(){
           schedText = '—'; // Not showing schedules separately when showing all disciplines
           amountText = formatAmount(totalAmount(s));
         }
+
+        const inactiveBadge = s.activeUntil ? ` <span style="font-size:10px;background:#ffdddd;color:#cc0000;border-radius:4px;padding:1px 4px">Inactiva</span>` : '';
         
         tr.innerHTML = `
-          <td>${s.type}</td>
-          <td><a href="#" class="student-link" data-id="${s.id}">${escapeHtml(s.name)}</a></td>
+          <td>${escapeHtml(s.type)}</td>
+          <td><a href="#" class="student-link" data-id="${s.id}">${escapeHtml(s.name)}</a>${inactiveBadge}</td>
           <td>${disciplinesText}</td>
           <td>${schedText}</td>
           <td>${amountText}</td>
           <td><input type="checkbox" data-id="${s.id}" class="paid-checkbox" ${s.paid? 'checked':''}></td>
-          <td><button class="btn btn-secondary delete-btn" data-id="${s.id}">🗑️</button></td>
+          <td><button class="btn btn-secondary delete-btn" data-id="${s.id}" title="${s.activeUntil ? 'Gestionar alumna' : 'Marcar inactiva'}">${s.activeUntil ? '🔄' : '🗑️'}</button></td>
         `;
         tbody.appendChild(tr);
       });
@@ -2365,7 +2602,7 @@ function initAlumnasPage(){
         const id = cb.dataset.id; togglePaid(id, cb.checked);
       }));
       document.querySelectorAll('.delete-btn').forEach(b=>b.addEventListener('click', e=>{
-        if(confirm('Eliminar registro?')){ deleteStudent(b.dataset.id); }
+        deleteStudent(b.dataset.id);
       }));
     }
     // Notes area load/save (kept for backward-compat if present)
@@ -2463,7 +2700,7 @@ function initAlumnasPage(){
     try{
       const keys = e && e.detail && e.detail.changedKeys;
       if(!Array.isArray(keys)) return;
-      const needsStudents = keys.some(k=> k===STORAGE_KEY || k===DISC_KEY || k===DELETED_DISC_KEY || k===ARCHIVE_KEY || k===DEBT_KEY);
+      const needsStudents = keys.some(k=> k===STORAGE_KEY || k===DISC_KEY || k===DELETED_DISC_KEY || k===ARCHIVE_KEY || k===DEBT_KEY || k===STANDALONE_PAYMENTS_KEY);
       const needsCal      = keys.some(k=> k===CAL_KEY);
       if(needsStudents){
         try{ renderStudentsTable(); }catch(ex){}
@@ -2869,9 +3106,9 @@ function openCalNoteEditor(monthKey, day, currentNote, onClose){
   });
 }
 
-function addCalendarEvent(dateString, text){
+function addCalendarEvent(dateString, text, type){
   // dateString expected YYYY-MM-DD
-  if(!dateString) return;
+  if(!dateString || !text) return;
   const m = dateString.match(/(\d{4})-(\d{2})-(\d{2})/);
   if(!m) return;
   const yyyy = m[1], mm = m[2], dd = String(parseInt(m[3],10));
@@ -2880,7 +3117,21 @@ function addCalendarEvent(dateString, text){
   store[key] = store[key] || {meta:{name:'',days:0,start:0}, days:{}};
   const prev = store[key].days[dd];
   const arr = normalizeNotesArray(prev);
-  arr.push({text, color:'#ED468F', type:''});
+  // auto-detect type from text prefix if not provided
+  if(!type){
+    if(/^Pago/i.test(text) || /^Vencimiento/i.test(text)) type = 'Pago';
+    else if(/^Inscripci/i.test(text)) type = 'Inscripción';
+    else if(/^Ensayo/i.test(text)) type = 'Ensayo';
+    else type = '';
+  }
+  const color = colorForType(type) || '#ED468F';
+  // avoid exact duplicate: update existing entry with same text instead of duplicating
+  const existingIdx = arr.findIndex(e => e.text === text);
+  if(existingIdx >= 0){
+    arr[existingIdx] = {text, color, type};
+  } else {
+    arr.push({text, color, type});
+  }
   store[key].days[dd] = arr;
   saveCalendar(store);
   // if current mini calendar is showing the same month, re-render
@@ -2897,9 +3148,8 @@ function saveAttendance(obj){ try{ rdsSetItem(ATT_KEY, JSON.stringify(obj)); }ca
 }
 
 function renderDisciplineTabs(container){
-  const tabs = [
-    'Todos los alumnos','Ballet Kids','Gimnasia Kids','Baile Moderno','Kpop I','Kpop II','Jazz','Gimnasia','Ballet','Heels'
-  ];
+  const disciplines = loadDisciplines();
+  const tabs = ['Todos los alumnos', ...disciplines];
   container.innerHTML = '';
   tabs.forEach((t,idx)=>{
     const d = document.createElement('button'); d.className = 'tab'; d.textContent = t; d.dataset.disc = t; if(idx===0) d.classList.add('active');
@@ -2928,7 +3178,9 @@ function renderAttendanceTable(){
   const dateInput = document.getElementById('attendance-date'); const dateStr = dateInput ? dateInput.value : '';
   const discipline = getSelectedDiscipline();
   const q = (document.getElementById('attendance-search')?.value || '').toLowerCase().trim();
-  const students = loadStudents().sort(sortStudents);
+  // For attendance, use the month of the selected date to filter active students
+  const attMonthKey = dateStr && /^\d{4}-\d{2}/.test(dateStr) ? dateStr.slice(0,7) : getAlumnasMonthKey();
+  const students = loadStudents().filter(s=> isStudentActiveForMonth(s, attMonthKey)).sort(sortStudents);
   const store = loadAttendance();
   tbody.innerHTML = '';
   students.forEach(s=>{
@@ -2968,8 +3220,27 @@ function renderAttendanceTable(){
 }
 
 function refreshAttendanceStudentList(){
-  // re-render table if attendance page present
-  try{ renderAttendanceTable(); }catch(e){}
+  // re-render discipline tabs and table if attendance page present
+  try{
+    const tabsWrap = document.getElementById('discipline-tabs');
+    if(tabsWrap){
+      const prevActive = tabsWrap.querySelector('.tab.active')?.dataset.disc || 'Todos los alumnos';
+      renderDisciplineTabs(tabsWrap);
+      // restore previously active tab
+      const newActive = Array.from(tabsWrap.querySelectorAll('.tab')).find(t=> t.dataset.disc === prevActive);
+      if(newActive){
+        tabsWrap.querySelectorAll('.tab').forEach(t=> t.classList.remove('active'));
+        newActive.classList.add('active');
+      }
+      // re-attach tab click handlers
+      tabsWrap.querySelectorAll('.tab').forEach(t=> t.addEventListener('click', ()=>{
+        tabsWrap.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+        t.classList.add('active');
+        renderAttendanceTable();
+      }));
+    }
+    renderAttendanceTable();
+  }catch(e){}
 }
 
 function initAsistenciaPage(){

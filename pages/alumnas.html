@@ -80,14 +80,17 @@
           <div style="text-align:right;margin-top:8px"><button id="save-reminders-btn" class="btn">Guardar notas</button></div>
         </div>
         <div class="small-block" style="width:100%">
-          <div style="display:flex;align-items:center;gap:8px;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap">
             <h3 style="margin:0;color:var(--pink);font-size:16px">Pagos del Mes</h3>
-            <div style="font-weight:700;color:var(--muted);font-size:13px">Mes: <span id="payments-month-label" style="color:var(--pink)">—</span></div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <div style="font-weight:700;color:var(--muted);font-size:13px">Mes: <span id="payments-month-label" style="color:var(--pink)">—</span></div>
+              <button id="add-payment-btn" class="btn" style="font-size:12px">➕ Agregar Pago</button>
+            </div>
           </div>
           <div class="table-wrap" style="margin-top:10px">
             <table id="payments-month-table" class="table" aria-label="Pagos del mes">
               <thead>
-                <tr><th>Fecha</th><th>Alumna</th><th>Disciplinas</th><th>Monto</th><th>Pagó</th></tr>
+                <tr><th>Fecha</th><th>Alumna</th><th>Disciplinas</th><th>Monto</th><th>Pagó</th><th>Acciones</th></tr>
               </thead>
               <tbody id="payments-month-tbody"></tbody>
             </table>
