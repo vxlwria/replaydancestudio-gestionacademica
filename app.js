@@ -1363,13 +1363,18 @@ function openEditPaymentModal(row, studentId, payIdx){
   const existing = document.querySelector('.modal-backdrop'); if(existing) existing.remove();
   const backdrop = document.createElement('div'); backdrop.className='modal-backdrop';
   const modal = document.createElement('div'); modal.className='modal'; modal.style.maxWidth='440px';
+  const isStudentPayment = (studentId !== null && payIdx !== null);
   const disciplines = loadDisciplines();
   const discOptions = disciplines.map(d=>`<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+  // For student payments, disciplines come from the student record (read-only)
+  const discFieldHtml = isStudentPayment
+    ? `<div><label style="font-weight:700">Disciplinas</label><span id="ep-disciplines" class="input" style="display:block;background:#f9f9f9;padding:6px 10px;border-radius:6px">${escapeHtml(row.disciplines||'—')}</span></div>`
+    : `<div><label style="font-weight:700">Disciplinas</label><input id="ep-disciplines" class="input" value="${escapeHtml(row.disciplines||'')}" list="ep-disc-list" /><datalist id="ep-disc-list">${discOptions}</datalist></div>`;
   modal.innerHTML = `
     <h3>Editar Pago</h3>
     <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px">
-      <div><label style="font-weight:700">Nombre</label><input id="ep-name" class="input" value="${escapeHtml(row.name)}" ${studentId !== null ? 'readonly style="background:#f9f9f9"' : ''}/></div>
-      <div><label style="font-weight:700">Disciplinas</label><input id="ep-disciplines" class="input" value="${escapeHtml(row.disciplines||'')}" list="ep-disc-list" /><datalist id="ep-disc-list">${discOptions}</datalist></div>
+      <div><label style="font-weight:700">Nombre</label><input id="ep-name" class="input" value="${escapeHtml(row.name)}" ${isStudentPayment ? 'readonly style="background:#f9f9f9"' : ''}/></div>
+      ${discFieldHtml}
       <div><label style="font-weight:700">Monto</label><input id="ep-amount" class="input" type="number" value="${escapeHtml(String(row.amount||''))}" /></div>
       <div><label style="font-weight:700">Fecha</label><input id="ep-date" class="input" type="date" value="${escapeHtml(row.date||'')}" /></div>
       <div><label style="display:flex;align-items:center;gap:8px;font-weight:700"><input type="checkbox" id="ep-paid" ${row.paid?'checked':''}/> Pagó</label></div>
@@ -1383,13 +1388,12 @@ function openEditPaymentModal(row, studentId, payIdx){
   document.getElementById('ep-cancel').addEventListener('click', ()=> backdrop.remove());
   document.getElementById('ep-save').addEventListener('click', ()=>{
     const name = document.getElementById('ep-name').value.trim();
-    const disciplines = document.getElementById('ep-disciplines').value.trim();
     const amount = Number(document.getElementById('ep-amount').value) || 0;
     const date = document.getElementById('ep-date').value;
     const paid = document.getElementById('ep-paid').checked;
     if(!name){ alert('El nombre es requerido'); return; }
-    if(studentId !== null && payIdx !== null){
-      // update student payment
+    if(isStudentPayment){
+      // update student payment (amount, date, paid only — disciplines come from student record)
       const allStudents = loadStudents();
       const st = allStudents.find(x=> x.id === studentId);
       if(st && st.personal && Array.isArray(st.personal.payments) && st.personal.payments[payIdx]){
@@ -1397,8 +1401,9 @@ function openEditPaymentModal(row, studentId, payIdx){
         saveStudents(allStudents);
       }
     } else {
-      // update standalone payment
-      updateStandalonePayment(row._id, {name, disciplines, amount, date, paid});
+      // update standalone payment (all fields editable)
+      const disciplinesVal = document.getElementById('ep-disciplines')?.value?.trim() || '';
+      updateStandalonePayment(row._id, {name, disciplines: disciplinesVal, amount, date, paid});
     }
     backdrop.remove();
     renderMonthlyPaymentsList();
@@ -3120,7 +3125,7 @@ function addCalendarEvent(dateString, text, type){
   // auto-detect type from text prefix if not provided
   if(!type){
     if(/^Pago/i.test(text) || /^Vencimiento/i.test(text)) type = 'Pago';
-    else if(/^Inscripci/i.test(text)) type = 'Inscripción';
+    else if(/^Inscripci[oó]n/i.test(text)) type = 'Inscripción';
     else if(/^Ensayo/i.test(text)) type = 'Ensayo';
     else type = '';
   }
