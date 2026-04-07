@@ -217,6 +217,7 @@ async function initAuth(){
     }
   }
   injectAuthBar(session);
+  injectUndoButton();
   try{ await resolveStudioId(); }catch(e){ console.warn('Studio resolve failed:', e.message || e); }
   try{ await supabaseLoadAll(); }catch(e){}
   __supabaseReady = true;
@@ -817,6 +818,143 @@ function rdsRemoveItem(key){
 
 // expose loader globally for reuse
 window.loadAuditLog = loadAuditLog;
+
+/* ============================================================
+   Undo (Deshacer) — global floating button
+   Uses the existing audit log (prev/next snapshots) to restore
+   the last meaningful data change on any page.
+   ============================================================ */
+const UNDO_SKIP_KEYS = new Set([
+  AUDIT_KEY,
+  AUTH_SESSION_KEY,
+  STUDIO_ID_CACHE_KEY,
+  MIGRATION_DONE_KEY,
+  'rds_student_ui_state_v1',
+  'rds_debts_expanded_v1',
+  'rds_deleted_disciplines_v1',
+]);
+
+function isUndoableKey(key){
+  if(!key || !key.startsWith('rds_')) return false;
+  if(UNDO_SKIP_KEYS.has(key)) return false;
+  if(key.includes('_clipboard') || key.includes('_clip_')) return false;
+  return true;
+}
+
+function getUndoKeyLabel(key){
+  const LABELS = {
+    'rds_students_v1':              'alumnas',
+    'rds_rental_people_v1':         'personas que rentan',
+    'rds_rental_schedules_v1':      'horarios de renta',
+    'rds_rental_weekly_schedule_v1':'horario semanal de renta',
+    'rds_standalone_payments_v1':   'pagos',
+    'rds_calendar_v1':              'calendario',
+    'rds_main_calendar_v1':         'calendario',
+    'rds_monthly_calendar_v2':      'calendario mensual',
+    'rds_weekly_schedules_v1':      'horario semanal',
+    'rds_simple_schedule_v2':       'horario',
+    'rds_simple_schedule_extra_v1': 'horario adicional',
+    'rds_xv_v1':                    'quinceañeras',
+    'rds_xv_calendar_v1':           'calendario XV',
+    'rds_choreo_v1':                'coreografías',
+    'rds_choreo_calendar_v1':       'calendario coreografías',
+    'rds_adeudos_v1':               'adeudos',
+    'rds_disciplines_v1':           'disciplinas',
+    'rds_packages_v1':              'paquetes',
+    'rds_attendance_v1':            'asistencias',
+    'rds_deleted_archive_v1':       'respaldo',
+  };
+  if(LABELS[key]) return LABELS[key];
+  if(key.startsWith('rds_reminders_'))     return 'recordatorios';
+  if(key.startsWith('rds_alumnas_notes_')) return 'notas de alumnas';
+  if(key.startsWith('rds_rental_notes_'))  return 'notas de renta';
+  if(key.startsWith('rds_xv_notes_'))      return 'notas XV';
+  if(key.startsWith('rds_choreo_notes_'))  return 'notas coreografías';
+  return key.replace(/^rds_/, '').replace(/_v\d+$/, '').replace(/_/g, ' ');
+}
+
+function getLastUndoableEntry(){
+  const log = loadAuditLog();
+  for(let i = log.length - 1; i >= 0; i--){
+    if(isUndoableKey(log[i].key)) return { entry: log[i], index: i };
+  }
+  return null;
+}
+
+function undoLastAction(){
+  const result = getLastUndoableEntry();
+  if(!result){
+    alert('No hay acciones que deshacer.');
+    updateUndoButtonState();
+    return;
+  }
+  const { entry, index } = result;
+  const op = entry.op;
+  if(!op || !['create','update','delete'].includes(op)){
+    alert('No hay acciones que deshacer.');
+    updateUndoButtonState();
+    return;
+  }
+  try{
+    if(op === 'create'){
+      // The key was newly created; remove it to undo
+      __originalRemoveItem(entry.key);
+      if(__supabaseReady) queueSupabaseDelete(entry.key);
+    } else {
+      // The key was updated or deleted; restore the previous value
+      const valueToRestore = typeof entry.prev === 'string'
+        ? entry.prev
+        : JSON.stringify(entry.prev);
+      __originalSetItem(entry.key, valueToRestore);
+      if(__supabaseReady) queueSupabaseUpsert(entry.key, entry.prev);
+    }
+    // Remove this entry from the audit log (suppressing the guard)
+    try{
+      __auditWriteGuard = true;
+      const log = loadAuditLog();
+      log.splice(index, 1);
+      __originalSetItem(AUDIT_KEY, JSON.stringify(log));
+    }finally{
+      __auditWriteGuard = false;
+    }
+    // Ask the current page to re-render
+    try{
+      window.dispatchEvent(new CustomEvent('rds_remote_sync', { detail: { changedKeys: [entry.key] } }));
+    }catch(e){}
+    const label   = getUndoKeyLabel(entry.key);
+    const opLabel = op === 'delete' ? 'eliminación en'
+                  : op === 'create' ? 'creación en'
+                  : 'cambio en';
+    alert(`↩️ Se deshizo el último ${opLabel}: ${label}.`);
+  }catch(err){
+    console.error('Undo failed:', err);
+    alert('No se pudo deshacer la acción.');
+  }
+  updateUndoButtonState();
+}
+
+function updateUndoButtonState(){
+  const btn = document.querySelector('.undo-float-btn');
+  if(!btn) return;
+  const hasUndoable = !!getLastUndoableEntry();
+  btn.disabled = !hasUndoable;
+  btn.title    = hasUndoable ? 'Deshacer última acción (↩️)' : 'No hay acciones para deshacer';
+  btn.style.opacity = hasUndoable ? '1' : '0.45';
+  btn.style.cursor  = hasUndoable ? 'pointer' : 'default';
+}
+
+function injectUndoButton(){
+  if(document.querySelector('.undo-float-btn')) return;
+  const btn = document.createElement('button');
+  btn.className = 'undo-float-btn';
+  btn.type      = 'button';
+  btn.innerHTML = '↩️ Deshacer';
+  btn.addEventListener('click', ()=> undoLastAction());
+  document.body.appendChild(btn);
+  updateUndoButtonState();
+  // Keep button state current as the audit log grows
+  window.addEventListener('rds_remote_sync', ()=> updateUndoButtonState());
+}
 
 /* ---------- Students localStorage management (Replay Dance Studio) ---------- */
 const STORAGE_KEY = 'rds_students_v1';
