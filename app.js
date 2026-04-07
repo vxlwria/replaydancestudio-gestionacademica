@@ -1933,37 +1933,83 @@ function deleteStudent(id){
   const currentMonth = getAlumnasMonthKey();
   const monthLabel = formatDebtMonthLabel(currentMonth);
 
-  if(toDelete.activeUntil){
-    // Already inactive — offer reactivation or permanent delete
-    const action = confirm(
-      `"${toDelete.name}" ya está inactiva desde ${formatDebtMonthLabel(toDelete.activeUntil)}.\n\n` +
-      `• ACEPTAR: reactivar esta alumna (volver a mostrarla en el mes actual)\n` +
-      `• CANCELAR: mantener como está`
-    );
-    if(!action) return;
-    // Reactivate: remove activeUntil
+  // Helper: permanently remove from the students array and send to archive
+  function permanentlyDelete(){
+    const remaining = all.filter(s=> s.id !== id);
+    saveStudents(remaining);
+    addArchiveEntry('Alumna', toDelete.name || '', {...toDelete, deletedPermanentlyAt: new Date().toISOString()});
+    renderStudentsTable();
+    try{ if(typeof refreshDebtStudentOptions === 'function') refreshDebtStudentOptions(); }catch(e){}
+    try{ if(typeof refreshAttendanceStudentList === 'function') refreshAttendanceStudentList(); }catch(e){}
+  }
+
+  // Helper: mark as inactive for current month
+  function markInactive(){
+    const updated = all.map(s=> s.id===id ? {...s, activeUntil: currentMonth} : s);
+    saveStudents(updated);
+    addArchiveEntry('Alumna-Inactiva', toDelete.name || '', {...toDelete, activeUntil: currentMonth});
+    renderStudentsTable();
+    try{ if(typeof refreshDebtStudentOptions === 'function') refreshDebtStudentOptions(); }catch(e){}
+    try{ if(typeof refreshAttendanceStudentList === 'function') refreshAttendanceStudentList(); }catch(e){}
+  }
+
+  // Helper: reactivate (remove activeUntil)
+  function reactivate(){
     const updated = all.map(s=> s.id===id ? {...s, activeUntil: undefined} : s);
     saveStudents(updated);
     renderStudentsTable();
-    return;
   }
 
-  // Soft-delete: mark as inactive from current month, keep the student in the array
-  const choice = confirm(
-    `¿Marcar a "${toDelete.name}" como INACTIVA a partir de ${monthLabel}?\n\n` +
-    `Sus pagos y registros anteriores se conservarán en los meses anteriores.\n\n` +
-    `• ACEPTAR: marcar inactiva desde ${monthLabel}\n` +
-    `• CANCELAR: no hacer nada`
-  );
-  if(!choice) return;
+  // Build the action modal
+  const existingBackdrop = document.querySelector('.modal-backdrop');
+  if(existingBackdrop) existingBackdrop.remove();
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.style.maxWidth = '420px';
 
-  const updated = all.map(s=> s.id===id ? {...s, activeUntil: currentMonth} : s);
-  saveStudents(updated);
-  addArchiveEntry('Alumna-Inactiva', toDelete.name || '', {...toDelete, activeUntil: currentMonth});
-
-  renderStudentsTable();
-  try{ if(typeof refreshDebtStudentOptions === 'function') refreshDebtStudentOptions(); }catch(e){}
-  try{ if(typeof refreshAttendanceStudentList === 'function') refreshAttendanceStudentList(); }catch(e){}
+  if(toDelete.activeUntil){
+    // Already inactive — offer reactivation or permanent delete
+    modal.innerHTML = `
+      <h3 style="margin-top:0">Gestionar alumna</h3>
+      <p style="margin:0 0 8px 0"><strong>${escapeHtml(toDelete.name)}</strong> está <span style="color:#cc0000">inactiva</span> desde ${escapeHtml(formatDebtMonthLabel(toDelete.activeUntil))}.</p>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 16px 0">¿Qué deseas hacer?</p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button id="ds-reactivate" class="btn" style="background:#2196F3">✅ Reactivar alumna</button>
+        <button id="ds-delete" class="btn" style="background:#e53935">🗑️ Eliminar permanentemente (enviar a respaldo)</button>
+        <button id="ds-cancel" class="btn btn-secondary">Cancelar</button>
+      </div>
+    `;
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+    modal.querySelector('#ds-reactivate').addEventListener('click', ()=>{ backdrop.remove(); reactivate(); });
+    modal.querySelector('#ds-delete').addEventListener('click', ()=>{ backdrop.remove(); permanentlyDelete(); });
+    modal.querySelector('#ds-cancel').addEventListener('click', ()=> backdrop.remove());
+    backdrop.addEventListener('click', e=>{ if(e.target===backdrop) backdrop.remove(); });
+  } else {
+    // Active — offer inactivate or permanent delete
+    modal.innerHTML = `
+      <h3 style="margin-top:0">Gestionar alumna</h3>
+      <p style="margin:0 0 8px 0"><strong>${escapeHtml(toDelete.name)}</strong></p>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 16px 0">¿Qué deseas hacer?</p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button id="ds-inactive" class="btn btn-secondary" style="border:2px solid #ED468F">⏸️ Marcar como inactiva (desde ${escapeHtml(monthLabel)})</button>
+        <button id="ds-delete" class="btn" style="background:#e53935">🗑️ Eliminar permanentemente (enviar a respaldo)</button>
+        <button id="ds-cancel" class="btn btn-secondary">Cancelar</button>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin:12px 0 0 0">
+        <em>Inactiva:</em> la alumna se oculta del mes actual en adelante, pero sus pagos y registros anteriores se conservan.<br>
+        <em>Eliminar permanentemente:</em> se guarda una copia en el respaldo de datos y se elimina de la lista.
+      </p>
+    `;
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+    modal.querySelector('#ds-inactive').addEventListener('click', ()=>{ backdrop.remove(); markInactive(); });
+    modal.querySelector('#ds-delete').addEventListener('click', ()=>{ backdrop.remove(); permanentlyDelete(); });
+    modal.querySelector('#ds-cancel').addEventListener('click', ()=> backdrop.remove());
+    backdrop.addEventListener('click', e=>{ if(e.target===backdrop) backdrop.remove(); });
+  }
 }
 
 function togglePaid(id, checked){
@@ -2000,8 +2046,12 @@ function openStudentModal(id){
   const backdrop = document.createElement('div'); backdrop.className='modal-backdrop';
   const modal = document.createElement('div'); modal.className='modal';
   modal.innerHTML = `
-    <h3>Información Personal — ${escapeHtml(s.name)}</h3>
+    <h3>Información Personal</h3>
     <div style="margin-bottom:12px;padding:10px;background:rgba(237,70,143,0.05);border-radius:8px;display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px">
+        <label style="font-weight:700;color:var(--pink);display:block;margin-bottom:4px">Nombre de la alumna</label>
+        <input class="input" id="m-name" value="${escapeHtml(s.name)}" placeholder="Nombre" style="width:100%;font-size:16px;font-weight:700" />
+      </div>
       <div>
         <label style="font-weight:700;color:var(--pink);display:block;margin-bottom:4px">Tipo de alumna</label>
         <select class="input" id="m-type" style="min-width:160px">
@@ -2235,6 +2285,8 @@ function openStudentModal(id){
     });
     s.disciplines = newDisciplines;
     s.type = document.getElementById('m-type').value || s.type;
+    const newName = (document.getElementById('m-name').value || '').trim();
+    if(newName) s.name = newName;
     s.personal = {
       dob: document.getElementById('m-dob').value,
       age: document.getElementById('m-age').value,
