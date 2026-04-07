@@ -889,8 +889,14 @@ function undoLastAction(){
     return;
   }
   const { entry, index } = result;
+  const op = entry.op;
+  if(!op || !['create','update','delete'].includes(op)){
+    alert('No hay acciones que deshacer.');
+    updateUndoButtonState();
+    return;
+  }
   try{
-    if(entry.op === 'create'){
+    if(op === 'create'){
       // The key was newly created; remove it to undo
       __originalRemoveItem(entry.key);
       if(__supabaseReady) queueSupabaseDelete(entry.key);
@@ -915,8 +921,10 @@ function undoLastAction(){
     try{
       window.dispatchEvent(new CustomEvent('rds_remote_sync', { detail: { changedKeys: [entry.key] } }));
     }catch(e){}
-    const label    = getUndoKeyLabel(entry.key);
-    const opLabel  = entry.op === 'delete' ? 'eliminación en' : 'cambio en';
+    const label   = getUndoKeyLabel(entry.key);
+    const opLabel = op === 'delete' ? 'eliminación en'
+                  : op === 'create' ? 'creación en'
+                  : 'cambio en';
     alert(`↩️ Se deshizo el último ${opLabel}: ${label}.`);
   }catch(err){
     console.error('Undo failed:', err);
