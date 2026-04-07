@@ -2286,7 +2286,8 @@ function openStudentModal(id){
     s.disciplines = newDisciplines;
     s.type = document.getElementById('m-type').value || s.type;
     const newName = (document.getElementById('m-name').value || '').trim();
-    if(newName) s.name = newName;
+    if(!newName){ alert('El nombre de la alumna no puede estar vacío.'); return; }
+    s.name = newName;
     s.personal = {
       dob: document.getElementById('m-dob').value,
       age: document.getElementById('m-age').value,
