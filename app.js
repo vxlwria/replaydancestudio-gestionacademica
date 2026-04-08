@@ -1915,6 +1915,27 @@ function renderStudentsTable(filterType='', filterDiscipline=''){
   document.querySelectorAll('.delete-btn').forEach(b=>b.addEventListener('click', e=>{
     deleteStudent(b.dataset.id);
   }));
+
+  // Update student count display (no discipline filter context available here)
+  updateStudentCountDisplay('');
+}
+
+function updateStudentCountDisplay(disciplineFilter){
+  const countEl = document.getElementById('student-count-display');
+  if(!countEl) return;
+  const currentMonth = getAlumnasMonthKey();
+  const allActive = loadStudents().filter(s=> isStudentActiveForMonth(s, currentMonth));
+  const totalCount = allActive.length;
+  if(disciplineFilter){
+    const discCount = allActive.filter(s=> s.disciplines.some(d=> d.name === disciplineFilter)).length;
+    countEl.innerHTML = `👩 Alumnas en <strong>"${escapeHtml(disciplineFilter)}"</strong>: <strong>${discCount}</strong> &nbsp;|&nbsp; Total registradas: <strong>${totalCount}</strong>`;
+  } else {
+    countEl.innerHTML = `👩 Total alumnas registradas: <strong>${totalCount}</strong>`;
+  }
+}
+
+function renderStudentsTableWithFilters(){
+  if(typeof window._rdsAlumnasApplyFilters === 'function') window._rdsAlumnasApplyFilters(); else renderStudentsTable();
 }
 
 function totalAmount(s){
@@ -1931,6 +1952,7 @@ function escapeHtml(txt){
 
 function addStudentFromForm(ev){
   ev && ev.preventDefault();
+  try {
   const type = document.querySelector('#input-type').value;
   const name = document.querySelector('#input-name').value.trim();
   if(!name) { alert('Nombre es requerido'); return; }
@@ -1956,11 +1978,14 @@ function addStudentFromForm(ev){
   const backdrop = document.querySelector('.modal-backdrop');
   if(backdrop) backdrop.remove();
   
-  renderStudentsTable();
-  // refresh debt student select so new student is available immediately
+  renderStudentsTableWithFilters();
   try{ if(typeof refreshDebtStudentOptions === 'function') refreshDebtStudentOptions(); }catch(e){}
   // refresh attendance lists if present
   try{ if(typeof refreshAttendanceStudentList === 'function') refreshAttendanceStudentList(); }catch(e){}
+  } catch(err){
+    console.error('Error al agregar alumna:', err);
+    alert('❌ Error al guardar la alumna: ' + (err && err.message ? err.message : String(err)));
+  }
 }
 
 function openAddStudentModal(){
@@ -2050,7 +2075,7 @@ function openAddStudentModal(){
   
   // Manage disciplines button
   document.getElementById('manage-disciplines').addEventListener('click', ()=>{
-    openDisciplineManager();
+    openManageDisciplines();
   });
   
   // Cancel button
@@ -2076,7 +2101,7 @@ function deleteStudent(id){
     const remaining = all.filter(s=> s.id !== id);
     saveStudents(remaining);
     addArchiveEntry('Alumna', toDelete.name || '', {...toDelete, deletedPermanentlyAt: new Date().toISOString()});
-    renderStudentsTable();
+    renderStudentsTableWithFilters();
     try{ if(typeof refreshDebtStudentOptions === 'function') refreshDebtStudentOptions(); }catch(e){}
     try{ if(typeof refreshAttendanceStudentList === 'function') refreshAttendanceStudentList(); }catch(e){}
   }
@@ -2086,7 +2111,7 @@ function deleteStudent(id){
     const updated = all.map(s=> s.id===id ? {...s, activeUntil: currentMonth} : s);
     saveStudents(updated);
     addArchiveEntry('Alumna-Inactiva', toDelete.name || '', {...toDelete, activeUntil: currentMonth});
-    renderStudentsTable();
+    renderStudentsTableWithFilters();
     try{ if(typeof refreshDebtStudentOptions === 'function') refreshDebtStudentOptions(); }catch(e){}
     try{ if(typeof refreshAttendanceStudentList === 'function') refreshAttendanceStudentList(); }catch(e){}
   }
@@ -2095,7 +2120,7 @@ function deleteStudent(id){
   function reactivate(){
     const updated = all.map(s=> s.id===id ? {...s, activeUntil: undefined} : s);
     saveStudents(updated);
-    renderStudentsTable();
+    renderStudentsTableWithFilters();
   }
 
   // Build the action modal
@@ -2412,6 +2437,7 @@ function openStudentModal(id){
   const saveBtn = document.getElementById('m-save');
   if(saveBtn){
   saveBtn.addEventListener('click', ()=>{
+    try {
     // update disciplines from the editor (legacy single schedule input)
     const newDisciplines = [];
     document.querySelectorAll('.m-disc-name').forEach((sel)=>{
@@ -2469,14 +2495,25 @@ function openStudentModal(id){
     s.personal.payments = payments;
     const arr = loadStudents().map(x=> x.id===s.id ? s : x);
     saveStudents(arr);
-    // synchronize with calendar: inscription, payments, ensayos
-    if(s.personal.inscriptionDate){ addCalendarEvent(s.personal.inscriptionDate, `Inscripción - ${s.name}`); }
-    (s.personal.payments||[]).forEach(p=>{
-      if(p.date) addCalendarEvent(p.date, `Pago - ${s.name} - $${p.amount} ${p.paid? '(OK)':''}`);
-    });
-    (s.personal.ensayos||[]).forEach(e=>{ if(e.date) addCalendarEvent(e.date, `Ensayo - ${s.name} ${e.disc? ' - '+e.disc:''} ${e.note? ' - '+e.note:''}`); });
+    // synchronize with calendar: inscription, payments, ensayos (skip per-call refresh to avoid duplicate initMiniCalendar)
+    let calendarUpdated = false;
+    try{
+      if(s.personal.inscriptionDate){ addCalendarEvent(s.personal.inscriptionDate, `Inscripción - ${s.name}`, undefined, true); calendarUpdated = true; }
+      (s.personal.payments||[]).forEach(p=>{
+        if(p.date){ addCalendarEvent(p.date, `Pago - ${s.name} - $${p.amount} ${p.paid? '(OK)':''}`, undefined, true); calendarUpdated = true; }
+      });
+      (s.personal.ensayos||[]).forEach(e=>{ if(e.date){ addCalendarEvent(e.date, `Ensayo - ${s.name} ${e.disc? ' - '+e.disc:''} ${e.note? ' - '+e.note:''}`, undefined, true); calendarUpdated = true; } });
+      // refresh mini calendar once after all events are added
+      if(calendarUpdated){ const mini = document.getElementById('mini-calendar'); if(mini) initMiniCalendar(); }
+    }catch(calErr){ console.warn('Calendar sync error:', calErr); }
 
-    backdrop.remove(); renderStudentsTable(); renderMonthlyPaymentsList();
+    backdrop.remove();
+    renderStudentsTableWithFilters();
+    renderMonthlyPaymentsList();
+    } catch(err){
+      console.error('Error al guardar:', err);
+      alert('❌ Error al guardar los cambios: ' + (err && err.message ? err.message : String(err)));
+    }
   });
   }
 
@@ -2770,9 +2807,8 @@ function initAlumnasPage(){
             amountText = formatAmount(disc.amount||0); 
           }
         } else {
-          // Show each discipline with its schedule on the same line
-          disciplinesText = s.disciplines.map(d=> `${d.name}${d.schedule ? ': ' + d.schedule : ''}`).join('<br>');
-          schedText = '—'; // Not showing schedules separately when showing all disciplines
+          disciplinesText = s.disciplines.map(d=>d.name).join(', ');
+          schedText = s.disciplines.map(d=>d.schedule).filter(Boolean).join(' • ');
           amountText = formatAmount(totalAmount(s));
         }
 
@@ -2800,7 +2836,12 @@ function initAlumnasPage(){
       document.querySelectorAll('.delete-btn').forEach(b=>b.addEventListener('click', e=>{
         deleteStudent(b.dataset.id);
       }));
+
+      // Update student count display
+      updateStudentCountDisplay(currentDisciplineFilter);
     }
+    // Expose applyFilters globally so modals can preserve filter state after save
+    window._rdsAlumnasApplyFilters = applyFilters;
     // Notes area load/save (kept for backward-compat if present)
     const notesTextarea = document.getElementById('notes-textarea');
     const saveNotesBtn = document.getElementById('save-notes-btn');
@@ -3302,7 +3343,7 @@ function openCalNoteEditor(monthKey, day, currentNote, onClose){
   });
 }
 
-function addCalendarEvent(dateString, text, type){
+function addCalendarEvent(dateString, text, type, skipRefresh=false){
   // dateString expected YYYY-MM-DD
   if(!dateString || !text) return;
   const m = dateString.match(/(\d{4})-(\d{2})-(\d{2})/);
@@ -3330,8 +3371,10 @@ function addCalendarEvent(dateString, text, type){
   }
   store[key].days[dd] = arr;
   saveCalendar(store);
-  // if current mini calendar is showing the same month, re-render
-  const mini = document.getElementById('mini-calendar'); if(mini){ initMiniCalendar(); }
+  // if current mini calendar is showing the same month, re-render (unless skipRefresh is set)
+  if(!skipRefresh){
+    const mini = document.getElementById('mini-calendar'); if(mini){ initMiniCalendar(); }
+  }
 }
 
 
